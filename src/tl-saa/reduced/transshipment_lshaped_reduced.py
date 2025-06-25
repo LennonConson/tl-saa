@@ -1,42 +1,44 @@
 import pyomo.environ as pyo
 import pandas as pd
 import numpy as np
-from scenario_creator_rail import generate_rail_travel_times
-from scenario_creator_ship import generate_ship_travel_times
+from mpisppy.opt.lshaped import LShapedMethod
+import mpisppy.utils.sputils as sputils
+from scenario_creator_rail_reduced import generate_rail_travel_times
+from scenario_creator_ship_reduced import generate_ship_travel_times
 
-
-def make_scenario_creator(num_scenarios, scenario_doe, divisions_per_day, num_V):
-    def scenario_creator(scenario_name):
-        travel_time_by_rail = generate_rail_travel_times(divisions_per_day)
-        ship_travel_times = generate_ship_travel_times(divisions_per_day, num_V)
-        travel_times = {
+def scenario_creator(scenario_name, **kwargs):
+    scenario_doe      = kwargs["scenario_doe"]
+    divisions_per_day = kwargs["divisions_per_day"]
+    num_V             = kwargs["num_V"]
+    
+    
+    # Build and return the Pyomo model.
+    model = pyo.ConcreteModel()
+    travel_time_by_rail = generate_rail_travel_times(divisions_per_day)
+    ship_travel_times = generate_ship_travel_times(divisions_per_day, num_V)
+    travel_times = {
             **travel_time_by_rail, 
             **ship_travel_times}
-        return model
-    return scenario_creator
-
-def build_model(scenario_doe, theta):
 
     max_days = 30
     divisions_per_day = 2
-    u_open = 10
-    num_I = 20
-    num_J = 10
+    u_open = 2
+    num_I = 15
+    num_J = 6
     num_K = 1
-    num_V = 18
+    num_V = 15
     num_T = divisions_per_day * max_days
 
     outload_requirements = {i + 1: val for i, val in enumerate(scenario_doe)}
 
-    # Ships Layberth
-    ship_layberth = {1:10, 2:10, 3:10, 4:4, 5:4, 6:6, 7:6, # Bob Hope
-                     8:6, 9:6, 10:6, 11:3, 12:6, 13:6, 14:6, # Watson
-                     15:6, 16:6, # Gordon
-                     17:6, 18:6} # Shughart
+    ship_layberth = {1:4, 2:4, 3:6, 4:6, # Bob Hope
+                     5:6, 6:6, 7:6, 8:3, 9:6, 10:6, 11:6, # Watson
+                     12:6, 13:6, # Gordon
+                     14:6, 15:6} # Shughart
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
     
     # Port Processing Limit
-    daily_processing_rate_ft = {1: 119000, 2: 105000, 3: 109300, 4: 110000, 5: 88000, 6: 89300, 7: 108300, 8: 57300, 9: 84000, 10: 123100}
+    daily_processing_rate_ft = {1: 119000, 2: 105000, 3: 109300, 4: 110000, 5: 88000, 6: 89300}
     SQFT_TO_SQM = 0.092903
     # Convert to square meters
     daily_processing_rate = {
@@ -54,10 +56,10 @@ def build_model(scenario_doe, theta):
             else:
                 ship_berth_binary[(berth, ship)] = 0
 
-    stowable_cargo_capacity = {1:35000, 2:35000, 3:35000, 4:35000, 5:35000, 6:35000, 7:35000, # Bob Hope
-                        8:36511, 9:36511, 10:36511, 11:36511, 12:36511, 13:36511, 14:36511, # Watson
-                        15:26390, 16:26390, # Gordon
-                        17:29029, 18:29029} # Shughart
+    stowable_cargo_capacity = {1:35000, 2:35000, 3:35000, 4:35000, # Bob Hope
+                        5:36511, 6:36511, 7:36511, 8:36511, 9:36511, 10:36511, 11:36511, # Watson
+                        12:26390, 13:26390, # Gordon
+                        14:29029, 15:29029} # Shughart
 
     # We need to have slightly more cargo space than possible outload
     FACTOR = 1.0001*24000*20/sum(stowable_cargo_capacity.values())
@@ -67,13 +69,9 @@ def build_model(scenario_doe, theta):
         for key, value in stowable_cargo_capacity.items()
     }
     
-    travel_time_by_rail = generate_rail_travel_times(divisions_per_day)
-    ship_travel_times = generate_ship_travel_times(divisions_per_day, num_V)
-    travel_times = {
-        **travel_time_by_rail, 
-        **ship_travel_times}
 
-    model = pyo.ConcreteModel()
+
+    
     # Sets
     # --------------
     # I the set of origins
@@ -116,12 +114,13 @@ def build_model(scenario_doe, theta):
     model.u_ship   = pyo.Param(model.V,                    initialize=scaled_stowable_cargo_capacity, within=pyo.NonNegativeReals)
     # Daily Processing Rate
     model.u_spoe   = pyo.Param(model.J,                    initialize=updated_daily_processing_rate, within=pyo.NonNegativeReals)
+    model.FirstStageCost = 0
 
     max_travel = max(
         model.c_nnv[index] 
         for index in model.c_nnv
     )
-
+    
 
     model.T_prime = pyo.Set(initialize = range(num_T+max_travel+1))
 
@@ -160,32 +159,32 @@ def build_model(scenario_doe, theta):
         return model.x_ship_out[j,m,v,t]  <= model.u_ship[v] * model.y_ship_out[j,m,v,t]
     model.const_x_ship_out_to_y = pyo.Constraint(model.J, model.M, model.V, model.T, rule=const_x_ship_out_to_y)
 
-    ##############
+    #############
     # ENTITY: SPOE
-    ##############
-    # # TIER 1 TASK: Check max spoes are opened
-    # # STATUS: V&V
-    # # 23
-    # def const_u_spoe(model):
-    #     return sum(model.y_open[j] for j in model.J) <= model.u_open
-    # model.const_u_spoe = pyo.Constraint(rule=const_u_spoe)
+    #############
+    # TIER 1 TASK: Check max spoes are opened
+    # STATUS: V&V
+    # 23
+    def const_u_spoe(model):
+        return sum(model.y_open[j] for j in model.J) <= model.u_open
+    model.const_u_spoe = pyo.Constraint(rule=const_u_spoe)
 
-    # # # TIER 1 TASK: Make sure only use open ports
-    # # # STATUS: V&V
-    # # # 24
-    # def const_only_open_rail(model, i, j, t):
-    #     return  model.y_rail[i,j,t] <= model.y_open[j]
-    # model.const_only_open_rail = pyo.Constraint(model.I, model.J, model.T, rule=const_only_open_rail)
+    # # TIER 1 TASK: Make sure only use open ports
+    # # STATUS: V&V
+    # # 24
+    def const_only_open_rail(model, i, j, t):
+        return  model.y_rail[i,j,t] <= model.y_open[j]
+    model.const_only_open_rail = pyo.Constraint(model.I, model.J, model.T, rule=const_only_open_rail)
 
     # # # 25
     # def const_only_open_ship_out(model, j, m, v, t):
     #     return  model.y_ship_out[j,m,v,t] <= model.y_open[j]
     # model.const_only_open_ship_out = pyo.Constraint(model.J, model.M, model.V, model.T, rule=const_only_open_ship_out)
 
-    # # 26
-    # def const_only_open_ship_in(model, j, j_prime, v, t):
-    #     return  model.y_ship_out[j,j_prime,v,t] <= model.y_open[j_prime]
-    # model.const_only_open_ship_in = pyo.Constraint(model.J, model.J, model.V, model.T, rule=const_only_open_ship_in)
+    # 26
+    def const_only_open_ship_in(model, j, j_prime, v, t):
+        return  model.y_ship_out[j,j_prime,v,t] <= model.y_open[j_prime]
+    model.const_only_open_ship_in = pyo.Constraint(model.J, model.J, model.V, model.T, rule=const_only_open_ship_in)
 
 
     ##############
@@ -209,7 +208,7 @@ def build_model(scenario_doe, theta):
                     for t in range(divisions_per_day  * (d - 1) +1, divisions_per_day  * d))  <= model.u_spoe[j]
     model.const_daily_processing = pyo.Constraint(model.J, model.D, rule=const_daily_processing)
 
-    # TIER 1 TASK: Make sure that a ship does not depart before the beginin of time horizon.
+    # TIER 1 TASK: Make sure that a ship does not depart before the begining of time horizon.
     # STATUS: V&V
     # 29
     def const_start_time(model, i, j, t):
@@ -275,46 +274,6 @@ def build_model(scenario_doe, theta):
                 == 1)
     model.const_destination_nodes = pyo.Constraint(model.V, rule=const_destination_nodes)
 
-    # # TIER 2 TASK: Make sure ships only visit spoe once.
-    # # STATUS: V&V
-    # # 34
-    # def const_one_visit_ship_out(model, j, v):
-    #     return sum(
-    #         model.y_ship_out[j_prime, j, k, v, t]
-    #         for j_prime in model.J_0 if j != j_prime
-    #         for k in model.K
-    #         for t in model.T
-    #     ) <= 1
-    # model.const_one_visit_ship_out = pyo.Constraint(model.J, model.V, rule=const_one_visit_ship_out)
-
-
-    # # TIER 2 TASK: Make sure ships only visit depart spoe once.
-    # # STATUS: V&V
-    # # 34
-    # def const_one_depart_ship_out(model, j, v):
-    #     return sum(
-    #         model.y_ship_out[j, m, k, v, t]
-    #         for m in model.M if j != m
-    #         for k in model.K
-    #         for t in model.T
-    #     ) <= 1
-    # model.const_one_depart_ship_out = pyo.Constraint(model.J_0, model.V, rule=const_one_depart_ship_out)
-
-
-    # # TIER 2 TASK: Make sure ships don't go to same port.
-    # # STATUS: V&V
-    # # NOTE: Probably unneeded
-    # # 35
-    # def const_ship_loop(model, j):
-    #     return (sum(
-    #         model.y_ship_out[j, j, k, v, t]
-    #         for k in model.K
-    #         for v in model.V
-    #         for t in model.T
-    #     ) == 0)
-    # model.const_ship_loop = pyo.Constraint(model.J, rule=const_ship_loop)
-
-
 
     # TIER 1 TASK: Ship Capacity
     # STATUS: V&V
@@ -353,7 +312,6 @@ def build_model(scenario_doe, theta):
     model.const_ship_timing = pyo.Constraint(model.J, model.V, rule=const_ship_timing)
 
 
-
     # ##############
     # # ENTITY: Supply Snchronization
     # ##############
@@ -378,9 +336,9 @@ def build_model(scenario_doe, theta):
     # STATUS: V&V
     # 40
     def const_const_supply(model, j, t):
-        return (sum(model.x_rail[i,j,t_prime] for i in model.I for t_prime in range(1,t+1))
+        return (sum(model.x_rail[i,j,t_prime] for i in model.I for t_prime in range(1,t))
                 + sum(model.x_ship_out[j_prime,j,v,t_prime] for j_prime in model.J if j != j_prime for v in  model.V for t_prime in range(1,t) if t_prime + model.c_nnv[j_prime, j, v] + 1 <= t)
-                <= sum(model.x_ship_out[j,m,v,t_prime] for m in model.M if m != j for v in model.V for t_prime in range(1,t+1)))
+                >= sum(model.x_ship_out[j,m,v,t_prime] for m in model.M if m != j for v in model.V for t_prime in range(1,t+1)))
     model.const_const_supply = pyo.Constraint(model.J, model.T, rule=const_const_supply)
 
     # TIER 1 TASK: Make sure there is ship storage
@@ -407,44 +365,83 @@ def build_model(scenario_doe, theta):
                 <= sum(model.x_ship_out[j,m,v,t] for m in model.M if j != m for t in model.T))
     model.const_ship_mono = pyo.Constraint(model.J,model.V, rule=const_ship_mono)
 
-  
-
-
+    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
     return model
 
+def scenario_denouement(rank, scenario_name, scenario):
+    pass
+
 def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
-    model = build_model(scenario_doe, 0)
-    solver = pyo.SolverFactory("gurobi")
-    solver.options['Presolve'] = 2  # Aggressive presolve
-    # # # Set relative optimality gap to 1%
-    results = solver.solve(model, tee=True)
+    
+    scenario_creator_kwargs = {
+        "scenario_doe": scenario_doe,
+        "divisions_per_day": 2,
+        "num_V": 15
+    }
+    all_scenario_names = list(range(1, num_scenarios + 1))
+    bounds = {name: -432000 for name in all_scenario_names}
+    num_iterations = 150
+    
+    options = {
+        "root_solver": "gurobi_persistent",
+        "sp_solver": "gurobi_persistent",
+        "sp_solver_options" : {"threads" : 1},
+        "valid_eta_lb": bounds,
+        "max_iter": num_iterations,
+        #"tol": 1e5, 
+        "verbose": True
+    }
+    
+    # print(all_scenario_names)
+    # model = scenario_creator("Scenario1", **scenario_creator_kwargs)
+    # solver = pyo.SolverFactory("gurobi")
+    # solver.options['Presolve'] = 2  # Aggressive presolve
+    # solver.options['Threads'] = 1  # Use a single thread for so multiple solvers can run in parallel
+    # # # # Set relative optimality gap
+    # solver.options['MIPGap'] = 0.15
+    # results = solver.solve(model, tee=True)
+
+    ls = LShapedMethod(
+        options,
+        all_scenario_names,
+        scenario_creator,
+        scenario_creator_kwargs = scenario_creator_kwargs
+    )
+    result = ls.lshaped_algorithm()
+    obj = pyo.value(ls.root.obj)
+    term = result['Solver'][0]['Termination condition']
+    sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
 
 
+    # # Function to extract nonzero values and save to CSV
+    # def export_variable_to_csv(var, filename):
+    #     data = []
+    #     for index in var:
+    #         value = var[index].value
+    #         if value is not None and value > 0:  # Filter out zero values
+    #             # If index is not a tuple, make it a tuple for consistency
+    #             if not isinstance(index, tuple):
+    #                 index = (index,)
+    #             data.append((*index, value))  # Unpack index tuple and append value
 
-    # Function to extract nonzero values and save to CSV
-    def export_variable_to_csv(var, filename):
-        data = []
-        for index in var:
-            value = var[index].value
-            if value is not None and value > 0:  # Filter out zero values
-                data.append((*index, value))  # Unpack index tuple and append value
+    #     if data:
+    #         # Create DataFrame
+    #         columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
+    #         df = pd.DataFrame(data, columns=columns)
+    #         df.to_csv(filename, index=False)
+    #         print(f"Exported {len(df)} nonzero entries to {filename}")
+    #     else:
+    #         print(f"No nonzero values to export for {filename}")
 
-        if data:
-            # Create DataFrame
-            columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
-            df = pd.DataFrame(data, columns=columns)
-            df.to_csv(filename, index=False)
-            print(f"Exported {len(df)} nonzero entries to {filename}")
-        else:
-            print(f"No nonzero values to export for {filename}")
+    # # Export each variable to a separate CSV file
+    # export_variable_to_csv(model.x_rail, "x_rail.csv")
+    # export_variable_to_csv(model.y_rail, "y_rail.csv")
+    # export_variable_to_csv(model.x_ship_out, "x_ship.csv")
+    # export_variable_to_csv(model.y_ship_out, "y_ship.csv")
+    # export_variable_to_csv(model.y_open, "y_open.csv")
+    # # Get objective value and solver status
+    # objective_value = pyo.value(model.obj)
+    # status = results['Solver'][0]['Termination condition']
+    # solution = {k: model.y_open[k].value for k in model.y_open}
 
-
-    # Export each variable to a separate CSV file
-    export_variable_to_csv(model.x_rail, "x_rail.csv")
-    export_variable_to_csv(model.y_rail, "y_rail.csv")
-    export_variable_to_csv(model.x_ship_out, "x_ship_out.csv")
-    export_variable_to_csv(model.y_ship_out, "y_ship_out.csv")
-
-
-
-    return 0,0,0
+    return obj, term, sol

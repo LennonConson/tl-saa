@@ -37,7 +37,7 @@ def generate_coffee_house_sequence(n_points, dim=3, solver="gurobi", tee=False):
 
 # Run example
 if __name__ == "__main__":
-    DIM = 20
+    DIM = 15
     N_POINTS = 200
     sequence = generate_coffee_house_sequence(n_points=N_POINTS, dim=DIM, tee=True)
 
