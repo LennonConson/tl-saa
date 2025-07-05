@@ -8,7 +8,7 @@ def load_coffee_house_data():
     current_dir = os.path.dirname(__file__)
     
     # Build the path to the data file relative to the repo root
-    data_path = os.path.join(current_dir, "..", "..", "..", "data", "coffee_house_d15_200.csv")
+    data_path = os.path.join(current_dir, "..", "..", "..", "data", "coffee_house_d10_200.csv")
     
     # Load and transform the data
     with open(data_path, newline="") as f:

@@ -22,7 +22,7 @@ def scenario_creator(scenario_name, **kwargs):
 
     max_days = 30
     divisions_per_day = 2
-    u_open = 2
+    u_open = 3
     num_I = 15
     num_J = 6
     num_K = 1
@@ -208,7 +208,7 @@ def scenario_creator(scenario_name, **kwargs):
                     for t in range(divisions_per_day  * (d - 1) +1, divisions_per_day  * d))  <= model.u_spoe[j]
     model.const_daily_processing = pyo.Constraint(model.J, model.D, rule=const_daily_processing)
 
-    # TIER 1 TASK: Make sure that a ship does not depart before the begining of time horizon.
+    # TIER 1 TASK: Make sure that a ship does not depart before the beginin of time horizon.
     # STATUS: V&V
     # 29
     def const_start_time(model, i, j, t):
@@ -365,7 +365,7 @@ def scenario_creator(scenario_name, **kwargs):
                 <= sum(model.x_ship_out[j,m,v,t] for m in model.M if j != m for t in model.T))
     model.const_ship_mono = pyo.Constraint(model.J,model.V, rule=const_ship_mono)
 
-    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
+    # sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
     return model
 
 def scenario_denouement(rank, scenario_name, scenario):
@@ -384,7 +384,6 @@ def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
     
     options = {
         "root_solver": "gurobi_persistent",
-        "root_solver_options": {"MIPGap": 0.01},  # 1% gap for master problem
         "sp_solver": "gurobi_persistent",
         "sp_solver_options" : {"threads" : 1},
         "valid_eta_lb": bounds,
@@ -394,56 +393,55 @@ def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
     }
     
     # print(all_scenario_names)
-    # model = scenario_creator("Scenario1", **scenario_creator_kwargs)
-    # solver = pyo.SolverFactory("gurobi")
+    model = scenario_creator("Scenario1", **scenario_creator_kwargs)
+    solver = pyo.SolverFactory("gurobi")
     # solver.options['Presolve'] = 2  # Aggressive presolve
     # solver.options['Threads'] = 1  # Use a single thread for so multiple solvers can run in parallel
-    # # # # Set relative optimality gap
+    # Set relative optimality gap
     # solver.options['MIPGap'] = 0.15
-    # results = solver.solve(model, tee=True)
+    results = solver.solve(model, tee=True)
 
-    ls = LShapedMethod(
-        options,
-        all_scenario_names,
-        scenario_creator,
-        scenario_creator_kwargs = scenario_creator_kwargs
-    )
-    
-    result = ls.lshaped_algorithm()
-    obj = pyo.value(ls.root.obj)
-    term = result['Solver'][0]['Termination condition']
-    sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
+    # ls = LShapedMethod(
+    #     options,
+    #     all_scenario_names,
+    #     scenario_creator,
+    #     scenario_creator_kwargs = scenario_creator_kwargs
+    # )
+    # result = ls.lshaped_algorithm()
+    # obj = pyo.value(ls.root.obj)
+    # term = result['Solver'][0]['Termination condition']
+    # sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
 
 
-    # # Function to extract nonzero values and save to CSV
-    # def export_variable_to_csv(var, filename):
-    #     data = []
-    #     for index in var:
-    #         value = var[index].value
-    #         if value is not None and value > 0:  # Filter out zero values
-    #             # If index is not a tuple, make it a tuple for consistency
-    #             if not isinstance(index, tuple):
-    #                 index = (index,)
-    #             data.append((*index, value))  # Unpack index tuple and append value
+    # Function to extract nonzero values and save to CSV
+    def export_variable_to_csv(var, filename):
+        data = []
+        for index in var:
+            value = var[index].value
+            if value is not None and value > 0:  # Filter out zero values
+                # If index is not a tuple, make it a tuple for consistency
+                if not isinstance(index, tuple):
+                    index = (index,)
+                data.append((*index, value))  # Unpack index tuple and append value
 
-    #     if data:
-    #         # Create DataFrame
-    #         columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
-    #         df = pd.DataFrame(data, columns=columns)
-    #         df.to_csv(filename, index=False)
-    #         print(f"Exported {len(df)} nonzero entries to {filename}")
-    #     else:
-    #         print(f"No nonzero values to export for {filename}")
+        if data:
+            # Create DataFrame
+            columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
+            df = pd.DataFrame(data, columns=columns)
+            df.to_csv(filename, index=False)
+            print(f"Exported {len(df)} nonzero entries to {filename}")
+        else:
+            print(f"No nonzero values to export for {filename}")
 
-    # # Export each variable to a separate CSV file
-    # export_variable_to_csv(model.x_rail, "x_rail.csv")
-    # export_variable_to_csv(model.y_rail, "y_rail.csv")
-    # export_variable_to_csv(model.x_ship_out, "x_ship.csv")
-    # export_variable_to_csv(model.y_ship_out, "y_ship.csv")
-    # export_variable_to_csv(model.y_open, "y_open.csv")
-    # # Get objective value and solver status
-    # objective_value = pyo.value(model.obj)
-    # status = results['Solver'][0]['Termination condition']
-    # solution = {k: model.y_open[k].value for k in model.y_open}
+    # Export each variable to a separate CSV file
+    export_variable_to_csv(model.x_rail, "x_rail.csv")
+    export_variable_to_csv(model.y_rail, "y_rail.csv")
+    export_variable_to_csv(model.x_ship_out, "x_ship.csv")
+    export_variable_to_csv(model.y_ship_out, "y_ship.csv")
+    export_variable_to_csv(model.y_open, "y_open.csv")
+    # Get objective value and solver status
+    obj = pyo.value(model.obj)
+    term = results['Solver'][0]['Termination condition']
+    sol = {k: model.y_open[k].value for k in model.y_open}
 
     return obj, term, sol

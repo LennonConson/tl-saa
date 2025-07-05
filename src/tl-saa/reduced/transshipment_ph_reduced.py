@@ -1,7 +1,8 @@
 import pyomo.environ as pyo
 import pandas as pd
 import numpy as np
-from mpisppy.opt.lshaped import LShapedMethod
+# Change imports for PH
+from mpisppy.opt.ph import PH
 import mpisppy.utils.sputils as sputils
 from scenario_creator_rail_reduced import generate_rail_travel_times
 from scenario_creator_ship_reduced import generate_ship_travel_times
@@ -379,71 +380,62 @@ def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
         "num_V": 15
     }
     all_scenario_names = list(range(1, num_scenarios + 1))
-    bounds = {name: -432000 for name in all_scenario_names}
-    num_iterations = 150
     
+    # PH options differ from L-shaped
     options = {
-        "root_solver": "gurobi_persistent",
-        "root_solver_options": {"MIPGap": 0.01},  # 1% gap for master problem
-        "sp_solver": "gurobi_persistent",
-        "sp_solver_options" : {"threads" : 1},
-        "valid_eta_lb": bounds,
-        "max_iter": num_iterations,
-        #"tol": 1e5, 
-        "verbose": True
+        "solver_name": "gurobi_persistent",
+        "solver_options": {
+            "threads": 1,
+            "MIPGap": 0.01
+        },
+        # For iteration 0 (first solve)
+        "iter0_solver_options": {
+            "threads": 1,
+            "MIPGap": 0.01
+        },
+        # Add this missing required option for iterations 1 and beyond
+        "iterk_solver_options": {
+            "threads": 1,
+            "MIPGap": 0.01  # Can be looser for later iterations if desired
+        },
+        # PH specific parameters
+        "PHIterLimit": 50,  # Max PH iterations
+        "defaultPHrho": 10.0,  # Default rho value
+        "convthresh": 1e-6,  # Convergence threshold
+        "verbose": True,
+        "display_timing": True,
+        "display_progress": True,
+        # Integer variable options for PH
+        "linearize_binary_proximal_terms": True,  # Better for binary variables
+        "breakpoint_strategy": 0,
+        "xhat_method": "closest_scenario",  # Method for computing xhat
+        "xhat_scenario_dict": None,  # Will be computed automatically
+        "suppress_warnings": False
     }
     
-    # print(all_scenario_names)
-    # model = scenario_creator("Scenario1", **scenario_creator_kwargs)
-    # solver = pyo.SolverFactory("gurobi")
-    # solver.options['Presolve'] = 2  # Aggressive presolve
-    # solver.options['Threads'] = 1  # Use a single thread for so multiple solvers can run in parallel
-    # # # # Set relative optimality gap
-    # solver.options['MIPGap'] = 0.15
-    # results = solver.solve(model, tee=True)
-
-    ls = LShapedMethod(
+    # Initialize the PH object instead of L-shaped
+    ph = PH(
         options,
         all_scenario_names,
         scenario_creator,
-        scenario_creator_kwargs = scenario_creator_kwargs
+        scenario_denouement,
+        scenario_creator_kwargs=scenario_creator_kwargs
     )
     
-    result = ls.lshaped_algorithm()
-    obj = pyo.value(ls.root.obj)
-    term = result['Solver'][0]['Termination condition']
-    sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
-
-
-    # # Function to extract nonzero values and save to CSV
-    # def export_variable_to_csv(var, filename):
-    #     data = []
-    #     for index in var:
-    #         value = var[index].value
-    #         if value is not None and value > 0:  # Filter out zero values
-    #             # If index is not a tuple, make it a tuple for consistency
-    #             if not isinstance(index, tuple):
-    #                 index = (index,)
-    #             data.append((*index, value))  # Unpack index tuple and append value
-
-    #     if data:
-    #         # Create DataFrame
-    #         columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
-    #         df = pd.DataFrame(data, columns=columns)
-    #         df.to_csv(filename, index=False)
-    #         print(f"Exported {len(df)} nonzero entries to {filename}")
-    #     else:
-    #         print(f"No nonzero values to export for {filename}")
-
-    # # Export each variable to a separate CSV file
-    # export_variable_to_csv(model.x_rail, "x_rail.csv")
-    # export_variable_to_csv(model.y_rail, "y_rail.csv")
-    # export_variable_to_csv(model.x_ship_out, "x_ship.csv")
-    # export_variable_to_csv(model.y_ship_out, "y_ship.csv")
-    # export_variable_to_csv(model.y_open, "y_open.csv")
-    # # Get objective value and solver status
-    # objective_value = pyo.value(model.obj)
-    # status = results['Solver'][0]['Termination condition']
-    # solution = {k: model.y_open[k].value for k in model.y_open}
-
-    return obj, term, sol
+    # Run PH algorithm
+    conv, obj, tbound = ph.ph_main()
+    
+    # Get solution from xhat
+    try:
+        # Try to get y_open values from xhat (can change based on PH implementation)
+        sol = {k: ph.xhat["ROOT"][k] for k in ph.scenario_dendro["ROOT"].nonleaves[0].scen.y_open}
+    except:
+        # Alternatively get from a scenario's solution
+        a_scenario = ph.local_scenarios[all_scenario_names[0]]
+        sol = {k: a_scenario.y_open[k].value for k in a_scenario.y_open}
+    
+    # Get objective value and termination status
+    obj_val = obj  # PH returns the objective value directly
+    term = "optimal" if conv else "iteration_limit"
+    
+    return obj_val, term, sol

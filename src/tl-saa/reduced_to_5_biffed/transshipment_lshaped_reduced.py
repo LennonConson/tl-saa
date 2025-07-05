@@ -23,10 +23,10 @@ def scenario_creator(scenario_name, **kwargs):
     max_days = 30
     divisions_per_day = 2
     u_open = 2
-    num_I = 15
-    num_J = 6
+    num_I = 10
+    num_J = 5
     num_K = 1
-    num_V = 15
+    num_V = 10
     num_T = divisions_per_day * max_days
 
     outload_requirements = {i + 1: val for i, val in enumerate(scenario_doe)}
