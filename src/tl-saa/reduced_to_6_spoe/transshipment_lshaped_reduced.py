@@ -9,7 +9,7 @@ from scenario_creator_ship_reduced import generate_ship_travel_times
 def scenario_creator(scenario_name, **kwargs):
     scenario_doe      = kwargs["scenario_doe"]
     divisions_per_day = kwargs["divisions_per_day"]
-    num_V             = kwargs["num_V"]
+    num_V = 6
     
     
     # Build and return the Pyomo model.
@@ -22,19 +22,18 @@ def scenario_creator(scenario_name, **kwargs):
 
     max_days = 30
     divisions_per_day = 2
-    u_open = 2
+    u_open = 1
     num_I = 10
-    num_J = 5
+    num_J = 6
     num_K = 1
-    num_V = 10
+    
     num_T = divisions_per_day * max_days
 
     outload_requirements = {i + 1: val for i, val in enumerate(scenario_doe)}
 
-    ship_layberth = {1:4, 2:4, 3:6, 4:6, # Bob Hope
-                     5:6, 6:6, 7:6, 8:3, 9:6, 10:6, 11:6, # Watson
-                     12:6, 13:6, # Gordon
-                     14:6, 15:6} # Shughart
+    ship_layberth = {1:1, 2:2, 3:3, 4:4, # Bob Hope
+                     5:5, 6:6
+                     }
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
     
     # Port Processing Limit
@@ -57,18 +56,16 @@ def scenario_creator(scenario_name, **kwargs):
                 ship_berth_binary[(berth, ship)] = 0
 
     stowable_cargo_capacity = {1:35000, 2:35000, 3:35000, 4:35000, # Bob Hope
-                        5:36511, 6:36511, 7:36511, 8:36511, 9:36511, 10:36511, 11:36511, # Watson
-                        12:26390, 13:26390, # Gordon
-                        14:29029, 15:29029} # Shughart
+                        5:36511, 6:36511}
 
-    # We need to have slightly more cargo space than possible outload
-    FACTOR = 1.0001*24000*20/sum(stowable_cargo_capacity.values())
+    # # We need to have slightly more cargo space than possible outload
+    # FACTOR = 1.0001*24000*8/sum(stowable_cargo_capacity.values())
 
-    scaled_stowable_cargo_capacity = {
-        key: round(value * FACTOR)
-        for key, value in stowable_cargo_capacity.items()
-    }
-    
+    # scaled_stowable_cargo_capacity = {
+    #     key: round(value * FACTOR)
+    #     for key, value in stowable_cargo_capacity.items()
+    # }
+    scaled_stowable_cargo_capacity = stowable_cargo_capacity 
 
 
     
