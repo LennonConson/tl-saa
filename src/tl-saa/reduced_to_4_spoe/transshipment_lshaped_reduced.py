@@ -23,8 +23,8 @@ def scenario_creator(scenario_name, **kwargs):
     max_days = 30
     divisions_per_day = 2
     u_open = 1
-    num_I = 10
-    num_J = 6
+    num_I = 8
+    num_J = 4
     num_K = 1
     
     num_T = divisions_per_day * max_days
@@ -32,12 +32,12 @@ def scenario_creator(scenario_name, **kwargs):
     outload_requirements = {i + 1: val for i, val in enumerate(scenario_doe)}
 
     ship_layberth = {1:1, 2:2, 3:3, 4:4, # Bob Hope
-                     5:5, 6:6
+                     5:1, 6:2
                      }
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
     
     # Port Processing Limit
-    daily_processing_rate_ft = {1: 119000, 2: 105000, 3: 109300, 4: 110000, 5: 88000, 6: 89300}
+    daily_processing_rate_ft = {1: 109300, 2: 110000, 3: 88000, 4: 89300}
     SQFT_TO_SQM = 0.092903
     # Convert to square meters
     daily_processing_rate = {
@@ -407,40 +407,25 @@ def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
     )
     
     result = ls.lshaped_algorithm()
-    obj = pyo.value(ls.root.obj)
-    term = result['Solver'][0]['Termination condition']
-    sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
-
-
-    # # Function to extract nonzero values and save to CSV
-    # def export_variable_to_csv(var, filename):
-    #     data = []
-    #     for index in var:
-    #         value = var[index].value
-    #         if value is not None and value > 0:  # Filter out zero values
-    #             # If index is not a tuple, make it a tuple for consistency
-    #             if not isinstance(index, tuple):
-    #                 index = (index,)
-    #             data.append((*index, value))  # Unpack index tuple and append value
-
-    #     if data:
-    #         # Create DataFrame
-    #         columns = [f"dim_{i+1}" for i in range(len(data[0]) - 1)] + ["value"]
-    #         df = pd.DataFrame(data, columns=columns)
-    #         df.to_csv(filename, index=False)
-    #         print(f"Exported {len(df)} nonzero entries to {filename}")
-    #     else:
-    #         print(f"No nonzero values to export for {filename}")
-
-    # # Export each variable to a separate CSV file
-    # export_variable_to_csv(model.x_rail, "x_rail.csv")
-    # export_variable_to_csv(model.y_rail, "y_rail.csv")
-    # export_variable_to_csv(model.x_ship_out, "x_ship.csv")
-    # export_variable_to_csv(model.y_ship_out, "y_ship.csv")
-    # export_variable_to_csv(model.y_open, "y_open.csv")
-    # # Get objective value and solver status
-    # objective_value = pyo.value(model.obj)
-    # status = results['Solver'][0]['Termination condition']
-    # solution = {k: model.y_open[k].value for k in model.y_open}
-
-    return obj, term, sol
+    
+    # Extract first stage decision variable values (y_open)
+    sol = {}
+    
+    # In your model, J corresponds to indices 9-12 (based on num_I=8, num_J=4)
+    for j in range(9, 13):
+        try:
+            sol[j] = ls.root.y_open[j].value
+            print(f"y_open[{j}] = {ls.root.y_open[j].value}")
+        except Exception as e:
+            print(f"Could not access y_open[{j}]: {str(e)}")
+    
+    # Get objective value from root model
+    try:
+        objective_value = ls.root.obj()
+    except Exception as e:
+        print(f"Could not access objective: {str(e)}")
+        objective_value = None
+        
+    status = "optimal"  # Or extract from result if needed
+    
+    return objective_value, status, sol

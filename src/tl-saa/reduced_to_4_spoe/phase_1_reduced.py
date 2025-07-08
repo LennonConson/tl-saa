@@ -8,7 +8,7 @@ def load_coffee_house_data():
     current_dir = os.path.dirname(__file__)
     
     # Build the path to the data file relative to the repo root
-    data_path = os.path.join(current_dir, "..", "..", "..", "data", "coffee_house_d10_200.csv")
+    data_path = os.path.join(current_dir, "..", "..", "..", "data", "coffee_house_d08_200.csv")
     
     # Load and transform the data
     with open(data_path, newline="") as f:
@@ -32,23 +32,24 @@ for scenario_doe in a:
     num_replication = 1
     number_samples_in_SAA = 10
     print(scenario_doe)
-    while True:
-        elapsed = datetime.now() - start_time
-        remaining = t_solve - elapsed
-        # Solve
-        print("Remaining", remaining.total_seconds())
-        if remaining.total_seconds() > 0:  # Success
-            # print(scenario_doe)
-            objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, solve_time_limit=remaining.total_seconds())
-            # if status == "optimal":
-            #     tc_saa_replication[(scenario_doe,number_samples_in_SAA,num_replication, status)] = objective_value
-            #     num_replication += 1
-            #     print(f"Remaining time: {remaining}; Replication {num_replication}; Result {objective_value}")
+    objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, 999999)
+    # while True:
+    #     elapsed = datetime.now() - start_time
+    #     remaining = t_solve - elapsed
+    #     # Solve
+    #     print("Remaining", remaining.total_seconds())
+    #     if remaining.total_seconds() > 0:  # Success
+    #         # print(scenario_doe)
+    #         objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, solve_time_limit=remaining.total_seconds())
+    #         # if status == "optimal":
+    #         #     tc_saa_replication[(scenario_doe,number_samples_in_SAA,num_replication, status)] = objective_value
+    #         #     num_replication += 1
+    #         #     print(f"Remaining time: {remaining}; Replication {num_replication}; Result {objective_value}")
 
-            # else:
-            #     print("Ending with status: ", status)
-        else:
-            break
+    #         # else:
+    #         #     print("Ending with status: ", status)
+    #     else:
+    #         break
     
 
     # objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, 999999)
