@@ -1,25 +1,3 @@
-###############################################################################
-# mpi-sppy: MPI-based Stochastic Programming in PYthon
-#
-# Copyright (c) 2024, Lawrence Livermore National Security, LLC, Alliance for
-# Sustainable Energy, LLC, The Regents of the University of California, et al.
-# All rights reserved. Please see the files COPYRIGHT.md and LICENSE.md for
-# full copyright and license information.
-###############################################################################
-# special for ph debugging DLW Dec 2018
-# unlimited crops
-# ALL INDEXES ARE ZERO-BASED
-#  ___________________________________________________________________________
-#
-#  Pyomo: Python Optimization Modeling Objects
-#  Copyright 2018 National Technology and Engineering Solutions of Sandia, LLC
-#  Under the terms of Contract DE-NA0003525 with National Technology and 
-#  Engineering Solutions of Sandia, LLC, the U.S. Government retains certain 
-#  rights in this software.
-#  This software is distributed under the 3-clause BSD License.
-#  ___________________________________________________________________________
-#
-# special scalable farmer for stress-testing
 
 import pyomo.environ as pyo
 import numpy as np
@@ -29,25 +7,12 @@ import mpisppy.utils.sputils as sputils
 farmerstream = np.random.RandomState()
 
 def scenario_creator(
-    scenario_name, use_integer=False, sense=pyo.minimize, crops_multiplier=1,
-        num_scens=None, seedoffset=0
-):
+    scenario_name, seedoffset=0):
     """ Create a scenario for the (scalable) farmer example.
     
     Args:
         scenario_name (str):
             Name of the scenario to construct.
-        use_integer (bool, optional):
-            If True, restricts variables to be integer. Default is False.
-        sense (int, optional):
-            Model sense (minimization or maximization). Must be either
-            pyo.minimize or pyo.maximize. Default is pyo.minimize.
-        crops_multiplier (int, optional):
-            Factor to control scaling. There will be three times this many
-            crops. Default is 1.
-        num_scens (int, optional):
-            Number of scenarios. We use it to compute _mpisppy_probability. 
-            Default is None.
         seedoffset (int): used by confidence interval code
     """
     # scenario_name has the form <str><int> e.g. scen12, foobar7
@@ -65,16 +30,11 @@ def scenario_creator(
     # as a kwarg to scenario_creator then use seed+scennum as the seed argument.
     farmerstream.seed(scennum+seedoffset)
 
-    # Check for minimization vs. maximization
-    if sense not in [pyo.minimize, pyo.maximize]:
-        raise ValueError("Model sense Not recognized")
+
 
     # Create the concrete model object
     model = pysp_instance_creation_callback(
-        scenname,
-        use_integer=use_integer,
-        sense=sense,
-        crops_multiplier=crops_multiplier,
+        scenname
     )
 
     # Create the list of nodes associated with the scenario (for two stage,
@@ -84,77 +44,45 @@ def scenario_creator(
     sputils.attach_root_node(model, model.FirstStageCost, varlist)    
     
     #Add the probability of the scenario
-    if num_scens is not None :
-        model._mpisppy_probability = 1/num_scens
-    else:
-        model._mpisppy_probability = "uniform"
+    model._mpisppy_probability = "uniform"
     return model
 
-def pysp_instance_creation_callback(
-    scenario_name, use_integer=False, sense=pyo.minimize, crops_multiplier=1
-):
+def pysp_instance_creation_callback(scenario_name):
     # long function to create the entire model
-    # scenario_name is a string (e.g. AboveAverageScenario0)
-    #
+    # scenario_name is a string (e.g. ts0, ts1, ts2, etc.)
+    # scengroupnum is the integer part of scenario_name
+    # scenario_base_name is the string part of scenario_name
     # Returns a concrete model for the specified scenario
 
     # scenarios come in groups of three
     scengroupnum = sputils.extract_num(scenario_name)
     scenario_base_name = scenario_name.rstrip("0123456789")
-    
+
     model = pyo.ConcreteModel(scenario_name)
-
-    def crops_init(m):
-        retval = []
-        for i in range(crops_multiplier):
-            retval.append("WHEAT"+str(i))
-            retval.append("CORN"+str(i))
-            retval.append("SUGAR_BEETS"+str(i))
-        return retval
-
-    model.CROPS = pyo.Set(initialize=crops_init)
+    
+    #
+    # Sets
+    #
+    model.CROPS = pyo.Set(initialize=['WHEAT', 'CORN', 'SUGAR_BEETS'])
 
     #
     # Parameters
     #
-
-    model.TOTAL_ACREAGE = 500.0 * crops_multiplier
-
-    def _scale_up_data(indict):
-        outdict = {}
-        for i in range(crops_multiplier):
-           for crop in ['WHEAT', 'CORN', 'SUGAR_BEETS']:
-               outdict[crop+str(i)] = indict[crop]
-        return outdict
-        
-    model.PriceQuota = _scale_up_data(
-        {'WHEAT':100000.0,'CORN':100000.0,'SUGAR_BEETS':6000.0})
-
-    model.SubQuotaSellingPrice = _scale_up_data(
-        {'WHEAT':170.0,'CORN':150.0,'SUGAR_BEETS':36.0})
-
-    model.SuperQuotaSellingPrice = _scale_up_data(
-        {'WHEAT':0.0,'CORN':0.0,'SUGAR_BEETS':10.0})
-
-    model.CattleFeedRequirement = _scale_up_data(
-        {'WHEAT':200.0,'CORN':240.0,'SUGAR_BEETS':0.0})
-
-    model.PurchasePrice = _scale_up_data(
-        {'WHEAT':238.0,'CORN':210.0,'SUGAR_BEETS':100000.0})
-
-    model.PlantingCostPerAcre = _scale_up_data(
-        {'WHEAT':150.0,'CORN':230.0,'SUGAR_BEETS':260.0})
+    model.TOTAL_ACREAGE = 500.0
+    model.PriceQuota = {'WHEAT':100000.0,'CORN':100000.0,'SUGAR_BEETS':6000.0}
+    model.SubQuotaSellingPrice = {'WHEAT':170.0,'CORN':150.0,'SUGAR_BEETS':36.0}
+    model.SuperQuotaSellingPrice = {'WHEAT':0.0,'CORN':0.0,'SUGAR_BEETS':10.0}
+    model.CattleFeedRequirement = {'WHEAT':200.0,'CORN':240.0,'SUGAR_BEETS':0.0}
+    model.PurchasePrice = {'WHEAT':238.0,'CORN':210.0,'SUGAR_BEETS':100000.0}
+    model.PlantingCostPerAcre = {'WHEAT':150.0,'CORN':230.0,'SUGAR_BEETS':260.0}
 
     #
     # Stochastic Data
     #
     Yield = {}
-    Yield['BelowAverageScenario'] = \
-        {'WHEAT':2.0,'CORN':2.4,'SUGAR_BEETS':16.0}
-    Yield['AverageScenario'] = \
-        {'WHEAT':2.5,'CORN':3.0,'SUGAR_BEETS':20.0}
-    Yield['AboveAverageScenario'] = \
-        {'WHEAT':3.0,'CORN':3.6,'SUGAR_BEETS':24.0}
+    Yield['BelowAverageScenario'] = {'WHEAT':2.0,'CORN':2.4,'SUGAR_BEETS':16.0}
+    Yield['AverageScenario'] = {'WHEAT':2.5,'CORN':3.0,'SUGAR_BEETS':20.0}
+    Yield['AboveAverageScenario'] = {'WHEAT':3.0,'CORN':3.6,'SUGAR_BEETS':24.0}
 
     def Yield_init(m, cropname):
         # yield as in "crop yield"
@@ -172,15 +100,7 @@ def pysp_instance_creation_callback(
     #
     # Variables
     #
-
-    if (use_integer):
-        model.DevotedAcreage = pyo.Var(model.CROPS,
-                                       within=pyo.NonNegativeIntegers,
-                                       bounds=(0.0, model.TOTAL_ACREAGE))
-    else:
-        model.DevotedAcreage = pyo.Var(model.CROPS, 
-                                       bounds=(0.0, model.TOTAL_ACREAGE))
-
+    model.DevotedAcreage = pyo.Var(model.CROPS, bounds=(0.0, model.TOTAL_ACREAGE))
     model.QuantitySubQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
     model.QuantitySuperQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
     model.QuantityPurchased = pyo.Var(model.CROPS, bounds=(0.0, None))
@@ -188,25 +108,20 @@ def pysp_instance_creation_callback(
     #
     # Constraints
     #
-
     def ConstrainTotalAcreage_rule(model):
         return pyo.sum_product(model.DevotedAcreage) <= model.TOTAL_ACREAGE
-
     model.ConstrainTotalAcreage = pyo.Constraint(rule=ConstrainTotalAcreage_rule)
 
     def EnforceCattleFeedRequirement_rule(model, i):
         return model.CattleFeedRequirement[i] <= (model.Yield[i] * model.DevotedAcreage[i]) + model.QuantityPurchased[i] - model.QuantitySubQuotaSold[i] - model.QuantitySuperQuotaSold[i]
-
     model.EnforceCattleFeedRequirement = pyo.Constraint(model.CROPS, rule=EnforceCattleFeedRequirement_rule)
 
     def LimitAmountSold_rule(model, i):
         return model.QuantitySubQuotaSold[i] + model.QuantitySuperQuotaSold[i] - (model.Yield[i] * model.DevotedAcreage[i]) <= 0.0
-
     model.LimitAmountSold = pyo.Constraint(model.CROPS, rule=LimitAmountSold_rule)
 
     def EnforceQuotas_rule(model, i):
         return (0.0, model.QuantitySubQuotaSold[i], model.PriceQuota[i])
-
     model.EnforceQuotas = pyo.Constraint(model.CROPS, rule=EnforceQuotas_rule)
 
     # Stage-specific cost computations;
@@ -223,11 +138,8 @@ def pysp_instance_creation_callback(
     model.SecondStageCost = pyo.Expression(rule=ComputeSecondStageCost_rule)
 
     def total_cost_rule(model):
-        if (sense == pyo.minimize):
-            return model.FirstStageCost + model.SecondStageCost
-        return -model.FirstStageCost - model.SecondStageCost
-    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule, 
-                                               sense=sense)
+        return model.FirstStageCost + model.SecondStageCost        
+    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule, sense=pyo.minimize)
 
     return model
 

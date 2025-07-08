@@ -1,13 +1,3 @@
-###############################################################################
-# mpi-sppy: MPI-based Stochastic Programming in PYthon
-#
-# Copyright (c) 2024, Lawrence Livermore National Security, LLC, Alliance for
-# Sustainable Energy, LLC, The Regents of the University of California, et al.
-# All rights reserved. Please see the files COPYRIGHT.md and LICENSE.md for
-# full copyright and license information.
-###############################################################################
-# general example driver for farmer with cylinders and an l-shape hub
-# NOTE: as of June 2020, it does not use the vanilla cylinders
 
 import lateral_transhipment_4_spoes
 
@@ -39,14 +29,11 @@ def _parse_args():
 def main():
     cfg = _parse_args()
     num_scen = cfg.num_scens
-    crops_mult = cfg.crops_mult
     scenario_creator = lateral_transhipment_4_spoes.scenario_creator
     scenario_denouement = lateral_transhipment_4_spoes.scenario_denouement
     all_scenario_names = [f"scen{sn}" for sn in range(num_scen)]
-    scenario_creator_kwargs = {
-        "use_integer": False,
-        "crops_multiplier": crops_mult,
-    }
+    print(all_scenario_names)
+    scenario_creator_kwargs = {}
 
     # Things needed for vanilla cylinders
     beans = (cfg, scenario_creator, scenario_denouement, all_scenario_names)
