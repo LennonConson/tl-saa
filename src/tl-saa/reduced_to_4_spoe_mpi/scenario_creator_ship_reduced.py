@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.stats import lognorm
+import csv
         # List of ships
         # 7 x Bob Hope 44 km/h, 35,000 m2
         # 1 through 7
@@ -19,36 +21,52 @@ import numpy as np
         # 2 x Shughart Class 44 km/h 29,029 m2
         # 17,18
         ## NORFOLK(6)x2
-def generate_ship_travel_times(divisions_per_day, num_V):
-
+def generate_ship_travel_times(divisions_per_day , percentile_delays, average_delay=0.15, sigma=1.0, num_V=8):
+    # Pre-Departure Delays
+    # Exponential Distribution
+    
+    # In-Transit Delays
     distance_table_nm = {
             ( 9, 9): 0,    ( 9, 10): 199,  ( 9, 11): 219,  ( 9, 12): 429,  ( 9, 13): 4904,   # Charleston
             (10, 9): 199,  (10, 10): 0,    (10, 11): 376,  (10, 12): 592,  (10, 13): 4904,   # Jacksonville
             (11, 9): 219,  (11, 10): 376,  (11, 11): 0,    (11, 12): 254,  (11, 13): 3678,   # Morehead City
             (12, 9): 429,  (12, 10): 592,  (12, 11): 254,  (12, 12): 0,    (12, 13): 3678,   # Portsmouth
             ( 0, 9): 0,    ( 0, 10): 0,    ( 0, 11): 0,    ( 0, 12): 0,    ( 0, 13): 0}      # Open
+    
     NAUTICAL_MILE_TO_KM = 1.852
     distance_table_km = { pair: round(nm * NAUTICAL_MILE_TO_KM, 2) for pair, nm in distance_table_nm.items()}
 
     vehicle_speeds = 44 # km/h (max speed)
-    vehicle_speeds_effective = vehicle_speeds* (24/divisions_per_day) # convert to current timeperiods
+
+    # Calculate time to reach destination in hours for each (origin, destination) pair
+    time_to_reach_destination = {}
+    for (A, B), distance_km in distance_table_km.items():
+        time_to_reach_destination[(A, B)] = distance_km / vehicle_speeds
+    
     # Assumptions
-    m = 0.1                   # Mean travel experiances a 10% delay
-    CV = 0.2                    # 20% variability
+    average_delay = 0.15                   # Mean travel experiences a 25  % delay
+    sigma = 1.0                     # Standard deviation for log-normal distribution
 
-    ship_travel_times = {}
+    perturbed_time_to_reach_destination = {}
+    for (A, B), time_hr in time_to_reach_destination.items():
+        if time_hr == 0:
+            perturbed_time_to_reach_destination[(A, B)] = 0
+            continue
+        scale = average_delay * time_hr
+        log_normal_adjustment = lognorm.ppf(percentile_delays[A], s=sigma, loc=0, scale=scale)
+        perturbed_time_to_reach_destination[(A, B)] = time_hr + log_normal_adjustment
+    
+    
+    CONVERT_TIME = divisions_per_day/24 # convert to current timeperiods
+    
+    ship_travel_times = {k: v * CONVERT_TIME for k, v in perturbed_time_to_reach_destination.items()}
 
-    for (A, B), distance in distance_table_km.items():
+
+    ship_travel_times_with_ship = {}
+
+    for (A, B), travel_time in ship_travel_times.items():
         for v in range(1,num_V+1):
-            if distance == 0:
-                ship_travel_times[(A, B, v)] = 0
-            else:
-                t_min = distance / vehicle_speeds_effective 
-                mean_travel_time = t_min * (1 + m) # minimum possible time (ideal conditions)
-                sigma = np.sqrt(np.log(CV**2 + 1))
-                mu = np.log(mean_travel_time) - (sigma**2 / 2)
-                ship_travel_times[(A, B, v)] = max(round(np.random.lognormal(mean=mu, sigma=sigma)),1)
-    return ship_travel_times
+            ship_travel_times_with_ship[(A, B, v)] = round(travel_time)
+            
 
-
-
+    return ship_travel_times_with_ship

@@ -8,24 +8,43 @@ from scenario_creator_ship_reduced import generate_ship_travel_times
 
 def scenario_creator(scenario_name, **kwargs):
     scenario_doe      = kwargs["scenario_doe"]
-    divisions_per_day = kwargs["divisions_per_day"]
+    num_I = 8
+    num_J = 4
+    set_J =range(num_I + 1 , num_I +num_J+1)
+    num_K = 1
     num_V = 6
-    
+    max_days = 30
+    divisions_per_day = 4
+    u_open = 1
     
     # Build and return the Pyomo model.
     model = pyo.ConcreteModel()
-    travel_time_by_rail = generate_rail_travel_times(divisions_per_day)
-    ship_travel_times = generate_ship_travel_times(divisions_per_day, num_V)
+    percentile_delays = {entry: np.random.rand() for entry in set_J}
+    print(f"Percentile Delays: {percentile_delays}")
+    average_delay=0.15
+    sigma=1.0
+
+    travel_time_by_rail = generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay, sigma)
+    ship_travel_times = generate_ship_travel_times(divisions_per_day, percentile_delays, average_delay, sigma, num_V)
+    # Save travel_time_by_rail to CSV
+    rail_df = pd.DataFrame([
+        {"from": k[0], "to": k[1], "ship": k[2], "travel_time": v}
+        for k, v in travel_time_by_rail.items()
+    ])
+    rail_df.to_csv("travel_time_by_rail.csv", index=False)
+
+    # Save ship_travel_times to CSV
+    ship_df = pd.DataFrame([
+        {"from": k[0], "to": k[1], "ship": k[2], "travel_time": v}
+        for k, v in ship_travel_times.items()
+    ])
+    ship_df.to_csv("ship_travel_times.csv", index=False)
     travel_times = {
             **travel_time_by_rail, 
             **ship_travel_times}
 
-    max_days = 30
-    divisions_per_day = 2
-    u_open = 1
-    num_I = 8
-    num_J = 4
-    num_K = 1
+    
+    
     
     num_T = divisions_per_day * max_days
 

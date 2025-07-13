@@ -1,6 +1,8 @@
 import random
 import numpy as np
-def generate_rail_travel_times(divisions_per_day):
+from scipy.stats import lognorm
+
+def generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay=0.15, sigma=1.0):
     travel_time_by_rail = {
                            ( 1, 1): 7,  ( 1, 2): 6,  ( 1, 3): 8,  ( 1, 4): 6,  # Camp Atterbury                                                      
                            ( 2, 1): 4,  ( 2, 2): 2,  ( 2, 3): 4,  ( 2, 4): 6,  # Fort Stewart
@@ -11,24 +13,26 @@ def generate_rail_travel_times(divisions_per_day):
                            ( 7, 1): 8,  ( 7, 2): 6,  ( 7, 3): 6,  ( 7, 4): 1,  # Fort Dix
                            ( 8, 1): 5,  ( 8, 2): 7,  ( 8, 3): 5,  ( 8, 4): 6}  # Fort Knox
                            
-    travel_time_by_rail = {
-        key: value + random.uniform(-0.5, 0.4999999999999999)
+    # Assuming the above travel times have been rounded to the nearest hour
+    # we try to reintroduce non-integer travel times by adding a small random value
+    travel_time_by_rail_hours = {
+        key: 24*(value + random.uniform(-0.5, 0.4999999999999999))
         for key, value in travel_time_by_rail.items()
     }
+    origins = {key[0] for key in travel_time_by_rail.keys()}
+    
 
 
+    perturbed_time_to_reach_destination = {}
+    for (A, B), time_days in travel_time_by_rail_hours.items():
+        b_adj = B + max(origins)
+        scale = average_delay * time_days
+        log_normal_adjustment = lognorm.ppf(percentile_delays[b_adj], s=sigma, loc=0, scale=scale)
+        perturbed_time_to_reach_destination[(A, b_adj, 0)] = time_days + log_normal_adjustment
+    
+    
+    CONVERT_TIME = divisions_per_day/24 # convert to current timeperiods
 
-    interval_adj_travel_time_by_rail = {
-        key: round(value * divisions_per_day)
-        for key, value in travel_time_by_rail.items()
-    }
+    rail_travel_times = {k: round(v * CONVERT_TIME) for k, v in perturbed_time_to_reach_destination.items()}
 
-    # Assumptions
-    CV = 0.2                   # 20% variability
-    rail_travel_times = {}
-
-    for (A, B), mean_travel_time in interval_adj_travel_time_by_rail.items():
-        sigma = np.sqrt(np.log(CV**2 + 1))
-        mu = np.log(mean_travel_time) - (sigma**2 / 2)
-        rail_travel_times[(A, B+8, 0)] = max(round(np.random.lognormal(mean=mu, sigma=sigma)),1)
     return rail_travel_times

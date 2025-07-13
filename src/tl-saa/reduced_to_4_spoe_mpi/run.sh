@@ -1,4 +1,4 @@
-mpiexec -np 2 python -u -m mpi4py lateral_transhipment_4_spoes_lshapedhub.py --num-scens 3 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped --max-solver-threads=1
+mpiexec -np 10 python -u -m mpi4py lateral_transhipment_4_spoes_lshapedhub.py --num-scens 10 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped --max-solver-threads=1
 # MPI Command Flags Explained
 # ## MPI and Python flags:
 
@@ -16,4 +16,4 @@ mpiexec -np 2 python -u -m mpi4py lateral_transhipment_4_spoes_lshapedhub.py --n
 # - **`--xhatlshaped`**: Uses the xhat consensus solution variant of L-shaped method
 # - **`--max-solver-threads=1`**: Restricts each solver instance to use only one thread
 
-# The script solves a lateral transhipment problem with 3 scenarios distributed across 2 MPI processes, using the L-shaped decomposition method with Gurobi as the solver.
+# The script solves a lateral transhipment problem with 3 scenarios distributed across 2 MPI processes, using the L-shaped decomposition method with Gurobi as the solver.s
