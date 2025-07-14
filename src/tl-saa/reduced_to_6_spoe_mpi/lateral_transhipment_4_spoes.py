@@ -1,28 +1,43 @@
+
 import pyomo.environ as pyo
 import pandas as pd
-import numpy as np
-from mpisppy.opt.lshaped import LShapedMethod
+
 import mpisppy.utils.sputils as sputils
 from scenario_creator_rail_reduced import generate_rail_travel_times
 from scenario_creator_ship_reduced import generate_ship_travel_times
+import numpy as np
 
-def scenario_creator(scenario_name, **kwargs):
-    scenario_doe      = kwargs["scenario_doe"]
-    num_I = 8
-    num_J = 4
+def scenario_creator(scenario_name):
+    """ Create a scenario    
+    Args:
+        scenario_name (str):
+            Name of the scenario to construct.
+    """
+    # Create the concrete model object
+    model = pysp_instance_creation_callback(scenario_name)
+    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
+    return model
+
+def pysp_instance_creation_callback(scenario_name):
+    model = pyo.ConcreteModel(scenario_name)
+    scenario_doe = [19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0]
+    # long function to create the entire model
+    # scenario_name is a string (e.g. 'scen0', 'scen1', 'scen2')
+    num_I = 10
+    num_J = 6
     set_J =range(num_I + 1 , num_I +num_J+1)
     num_K = 1
     num_V = 6
     max_days = 30
     divisions_per_day = 4
-    u_open = 1
+    u_open = 2
     
     # Build and return the Pyomo model.
     model = pyo.ConcreteModel()
     percentile_delays = {entry: np.random.rand() for entry in set_J}
     print(f"Percentile Delays: {percentile_delays}")
-    average_delay=0.15
-    sigma=1.0
+    average_delay=0.25
+    sigma=1.5
 
     travel_time_by_rail = generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay, sigma)
     ship_travel_times = generate_ship_travel_times(divisions_per_day, percentile_delays, average_delay, sigma, num_V)
@@ -56,7 +71,7 @@ def scenario_creator(scenario_name, **kwargs):
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
     
     # Port Processing Limit
-    daily_processing_rate_ft = {1: 109300, 2: 110000, 3: 88000, 4: 89300}
+    daily_processing_rate_ft = {1: 119000, 2: 105000, 3: 109300, 4: 110000, 5: 88000, 6: 89300}
     SQFT_TO_SQM = 0.092903
     # Convert to square meters
     daily_processing_rate = {
@@ -381,72 +396,14 @@ def scenario_creator(scenario_name, **kwargs):
                 <= sum(model.x_ship_out[j,m,v,t] for m in model.M if j != m for t in model.T))
     model.const_ship_mono = pyo.Constraint(model.J,model.V, rule=const_ship_mono)
 
-    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
     return model
 
+
+
+
+#============================
 def scenario_denouement(rank, scenario_name, scenario):
-    pass
-
-def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
-    
-    scenario_creator_kwargs = {
-        "scenario_doe": scenario_doe,
-        "divisions_per_day": 2,
-        "num_V": 15
-    }
-    all_scenario_names = list(range(1, num_scenarios + 1))
-    bounds = {name: -432000 for name in all_scenario_names}
-    num_iterations = 150
-    
-    options = {
-        "root_solver": "gurobi_persistent",
-        "root_solver_options": {"MIPGap": 0.01},  # 1% gap for master problem
-        "sp_solver": "gurobi_persistent",
-        "sp_solver_options" : {"threads" : 1},
-        "valid_eta_lb": bounds,
-        "max_iter": num_iterations,
-        #"tol": 1e5, 
-        "verbose": True
-    }
-    
-    # print(all_scenario_names)
-    # model = scenario_creator("Scenario1", **scenario_creator_kwargs)
-    # solver = pyo.SolverFactory("gurobi")
-    # solver.options['Presolve'] = 2  # Aggressive presolve
-    # solver.options['Threads'] = 1  # Use a single thread for so multiple solvers can run in parallel
-    # # # # Set relative optimality gap
-    # solver.options['MIPGap'] = 0.15
-    # results = solver.solve(model, tee=True)
-
-    ls = LShapedMethod(
-        options,
-        all_scenario_names,
-        scenario_creator,
-        scenario_creator_kwargs = scenario_creator_kwargs
-    )
-    
-    result = ls.lshaped_algorithm()
-    all_sol = ls.gather_var_values_to_rank0()
-    sol = {key[1]: value for key, value in all_sol.items() if key[0] == 1}
-    print(sol)
-    # Extract first stage decision variable values (y_open)
-    # sol = {}
-    
-    # In your model, J corresponds to indices 9-12 (based on num_I=8, num_J=4)
-    # sol = {k: ls.root.y_open[k].value for k in ls.root.y_open}
-    # for j in range(9, 13):
-    #     try:
-    #         sol[j] = ls.root.y_open[j].value
-    #         print(f"y_open[{j}] = {ls.root.y_open[j].value}")
-    #     except Exception as e:
-    #         print(f"Could not access y_open[{j}]: {str(e)}")
-    
-    # Get objective value from root model
-    
-    # objective_value = ls.root.obj()    
-    # status = "optimal"  # Or extract from result if needed
-    
-    return 0, 0, 0
-doe = [19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0]
-
-objective_value, status, solution = run_lshaped(10, doe, 999999)
+    print("HELLO")
+    print("Rank:", rank)
+    print("Scenario Name:", scenario_name)
+    print("Scenario:", scenario)

@@ -8,21 +8,21 @@ from scenario_creator_ship_reduced import generate_ship_travel_times
 
 def scenario_creator(scenario_name, **kwargs):
     scenario_doe      = kwargs["scenario_doe"]
-    num_I = 8
-    num_J = 4
+    num_I = 10
+    num_J = 6
     set_J =range(num_I + 1 , num_I +num_J+1)
     num_K = 1
     num_V = 6
     max_days = 30
     divisions_per_day = 4
-    u_open = 1
+    u_open = 2
     
     # Build and return the Pyomo model.
     model = pyo.ConcreteModel()
     percentile_delays = {entry: np.random.rand() for entry in set_J}
     print(f"Percentile Delays: {percentile_delays}")
-    average_delay=0.15
-    sigma=1.0
+    average_delay=0.25
+    sigma=1.5
 
     travel_time_by_rail = generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay, sigma)
     ship_travel_times = generate_ship_travel_times(divisions_per_day, percentile_delays, average_delay, sigma, num_V)
@@ -56,7 +56,7 @@ def scenario_creator(scenario_name, **kwargs):
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
     
     # Port Processing Limit
-    daily_processing_rate_ft = {1: 109300, 2: 110000, 3: 88000, 4: 89300}
+    daily_processing_rate_ft = {1: 119000, 2: 105000, 3: 109300, 4: 110000, 5: 88000, 6: 89300}
     SQFT_TO_SQM = 0.092903
     # Convert to square meters
     daily_processing_rate = {
@@ -447,6 +447,6 @@ def run_lshaped(num_scenarios, scenario_doe, solve_time_limit):
     # status = "optimal"  # Or extract from result if needed
     
     return 0, 0, 0
-doe = [19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0]
+doe = [19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0, 19500.0]
 
-objective_value, status, solution = run_lshaped(10, doe, 999999)
+objective_value, status, solution = run_lshaped(50, doe, 999999)

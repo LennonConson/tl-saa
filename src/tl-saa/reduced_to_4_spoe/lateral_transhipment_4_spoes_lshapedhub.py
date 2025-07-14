@@ -64,7 +64,7 @@ def main():
 
 
     list_of_spoke_dict = list()
-    list_of_spoke_dict.append(xhatlshaped_spoke)
+    # list_of_spoke_dict.append(xhatlshaped_spoke)
     WheelSpinner(hub_dict, list_of_spoke_dict).spin()
 
 

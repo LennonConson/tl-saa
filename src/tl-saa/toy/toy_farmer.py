@@ -1,8 +1,6 @@
 
 import pyomo.environ as pyo
 import mpisppy.utils.sputils as sputils
-from scenario_creator_rail_reduced import generate_rail_travel_times
-from scenario_creator_ship_reduced import generate_ship_travel_times
 
 def scenario_creator(scenario_name):
     """ Create a scenario    

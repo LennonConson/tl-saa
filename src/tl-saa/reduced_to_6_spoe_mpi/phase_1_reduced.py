@@ -1,4 +1,4 @@
-from transshipment_lshaped_reduced import run_lshaped
+# from transshipment_lshaped_reduced import run_lshaped
 from datetime import datetime, timedelta
 import os
 import csv
@@ -28,11 +28,12 @@ del a[1:]
 sample_explore = 10
 
 for scenario_doe in a:
+    print(scenario_doe)
     start_time = datetime.now()
     num_replication = 1
     number_samples_in_SAA = 10
     print(scenario_doe)
-    objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, 999999)
+    # objective_value, status, solution = run_lshaped(sample_explore, scenario_doe, 999999)
     # while True:
     #     elapsed = datetime.now() - start_time
     #     remaining = t_solve - elapsed
