@@ -1,5 +1,5 @@
 
-import toy_farmer
+import final_6_spoe
 
 from mpisppy.spin_the_wheel import WheelSpinner
 from mpisppy.utils import config
@@ -14,7 +14,6 @@ def _parse_args():
     cfg.popular_args()
     cfg.two_sided_args()
     cfg.xhatlshaped_args()
-    cfg.fwph_args()
     cfg.parse_command_line("ts_cylinders")
     return cfg
 
@@ -22,10 +21,15 @@ def _parse_args():
 def main():
     cfg = _parse_args()
     num_scen = cfg.num_scens
-    scenario_creator = toy_farmer.scenario_creator
-    scenario_denouement = toy_farmer.scenario_denouement
+    scenario_creator = final_6_spoe.scenario_creator
+    scenario_denouement = final_6_spoe.scenario_denouement
     all_scenario_names = [f"scen{sn}" for sn in range(num_scen)]
-    scenario_creator_kwargs = {}
+    print(all_scenario_names)
+    scenario_creator_kwargs = {
+        "divisions_per_day": 3,
+        "max_days": 16,
+        "replication": 0
+    }
 
     # Things needed for vanilla cylinders
     beans = (cfg, scenario_creator, scenario_denouement, all_scenario_names)
@@ -38,8 +42,8 @@ def main():
         "sp_solver_options": spo,
         #"valid_eta_lb": {i: -432000 for i in all_scenario_names},
         "max_iter": cfg.max_iterations,
-        "verbose": False,
-        "root_scenarios":[all_scenario_names[len(all_scenario_names)//2]]
+        "verbose": True,
+        "root_scenarios":[all_scenario_names[0]]
    }
     
     # L-shaped hub
@@ -60,15 +64,11 @@ def main():
         },
     }
 
-        # FWPH spoke
-    
-    # fw_spoke = vanilla.fwph_spoke(*beans, scenario_creator_kwargs=scenario_creator_kwargs)
     
     xhatlshaped_spoke = vanilla.xhatlshaped_spoke(*beans, scenario_creator_kwargs=scenario_creator_kwargs)
 
 
     list_of_spoke_dict = list()
-    # list_of_spoke_dict.append(fw_spoke)
     list_of_spoke_dict.append(xhatlshaped_spoke)
     WheelSpinner(hub_dict, list_of_spoke_dict).spin()
 

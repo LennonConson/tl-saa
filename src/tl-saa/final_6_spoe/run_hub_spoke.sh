@@ -1,6 +1,4 @@
-mpiexec -np 6 python -u -m mpi4py toy_farmer_lshapedhub.py --num-scens 3 --default-rho=1 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped 
-
-
+mpiexec -np 2 python -u -m mpi4py final_6_spoe_lshapedhub.py --num-scens 50 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped --max-solver-threads=12 --verbose
 # MPI Command Flags Explained
 # ## MPI and Python flags:
 
@@ -19,7 +17,6 @@ mpiexec -np 6 python -u -m mpi4py toy_farmer_lshapedhub.py --num-scens 3 --defau
 # - **`--max-solver-threads=1`**: Restricts each solver instance to use only one thread
 
 # The script solves a lateral transhipment problem with 3 scenarios distributed across 2 MPI processes, using the L-shaped decomposition method with Gurobi as the solver.
-
 
 # usage: ts_cylinders [-h] --num-scens INT [--max-iterations INT]
 #                     [--time-limit INT] [--solver-log-dir STR]
