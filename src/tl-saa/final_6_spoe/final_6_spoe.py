@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-def scenario_creator(scenario_name, divisions_per_day=3, max_days=16, replication=0):
+def scenario_creator(scenario_name, divisions_per_day=3, replication=0):
     print(f"Creating scenario: {scenario_name}")
     """ Create a scenario    
     Args:
@@ -15,14 +15,21 @@ def scenario_creator(scenario_name, divisions_per_day=3, max_days=16, replicatio
             Name of the scenario to construct.
     """
     # Create the concrete model object
-    model = pysp_instance_creation_callback(scenario_name, divisions_per_day, max_days, replication)
+    model = pysp_instance_creation_callback(scenario_name, divisions_per_day, replication)
     sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])    
     return model
 
-def pysp_instance_creation_callback(scenario_name, divisions_per_day, max_days, replication):
+def pysp_instance_creation_callback(scenario_name, divisions_per_day, replication):
     # long function to create the entire model
     # scenario_name is a string (e.g. 'scen0', 'scen1', 'scen2')
+    # /home/lennon/git/tl-saa/data/feasibility_dict.pkl
+    
+    # Key: (scenario_name, replication, divisions_per_day), Value: max_days
 
+    with open('/home/lennon/git/tl-saa/data/feasibility_dict.pkl', 'rb') as f:
+        feasibility_dict = pickle.load(f)
+    max_days = feasibility_dict.get((scenario_name, replication, divisions_per_day), 16)+1
+    # max_days = 17
     model = pyo.ConcreteModel(scenario_name)
     num_I = 6
     num_J = 6
@@ -32,7 +39,6 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, max_days, 
     num_V = 4
     u_open = 2
     scenario_doe = [22000.0] * num_I # 22,000 m2 is max, 14000 is min
-    
 
 
     # Build and return the Pyomo model.

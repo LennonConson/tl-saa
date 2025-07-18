@@ -7,11 +7,10 @@ scenario_creator = final_6_spoe.scenario_creator
 if len(sys.argv) > 1:
     scenario_name = sys.argv[1]
 else:
-    scenario_name = 'scen0'  # Default scenario
+    scenario_name = 'scen2'  # Default scenario
 
 scenario_creator_kwargs = {
         "divisions_per_day": 3,
-        "max_days": 16,
         "replication": 0
     }
 

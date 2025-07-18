@@ -1,4 +1,4 @@
-mpiexec -np 6 python -u -m mpi4py toy_farmer_lshapedhub.py --num-scens 3 --default-rho=1 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped 
+mpiexec -np 2 python -u -m mpi4py toy_farmer_lshapedhub.py --num-scens 3 --default-rho=1 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped 
 
 
 # MPI Command Flags Explained

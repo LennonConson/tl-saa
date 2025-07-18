@@ -27,10 +27,9 @@ def main():
     print(all_scenario_names)
     scenario_creator_kwargs = {
         "divisions_per_day": 3,
-        "max_days": 16,
         "replication": 0
     }
-
+    
     # Things needed for vanilla cylinders
     beans = (cfg, scenario_creator, scenario_denouement, all_scenario_names)
 
