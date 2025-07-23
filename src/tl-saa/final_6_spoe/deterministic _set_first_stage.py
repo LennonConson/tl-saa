@@ -15,7 +15,9 @@ for scen_num in range(1, 100):  # scen1 to scen99
     scenario_name = f"scen{scen_num}"
     print(f"Using scenario: {scenario_name}")
     model = scenario_creator(scenario_name, **scenario_creator_kwargs)
-
+    fixed_values = {1: 0, 2: 1, 3: 0, 4: 1}
+    for j in fixed_values:
+        model.y_open[j].fix(fixed_values[j])
     solver = pyo.SolverFactory('gurobi')
     start_time = time.time()
     result = solver.solve(model, tee=False)
@@ -29,7 +31,7 @@ for scen_num in range(1, 100):  # scen1 to scen99
 
 # Write to CSV
 fieldnames = ['scenario', 'wall_time'] + [f'y_open[{i}]' for i in model.y_open]
-with open('deterministic_optimal_results.csv', 'w', newline='') as csvfile:
+with open('results.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     for row in results:

@@ -6,6 +6,7 @@ from scenario_creator_ship_reduced import generate_ship_travel_times
 import numpy as np
 import pandas as pd
 import pickle
+import os
 
 def scenario_creator(scenario_name, divisions_per_day=3, replication=0):
     print(f"Creating scenario: {scenario_name}")
@@ -25,9 +26,9 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, replicatio
     # /home/lennon/git/tl-saa/data/feasibility_dict.pkl
     
     # Key: (scenario_name, replication, divisions_per_day), Value: max_days
-
-    with open('/home/lennon/git/tl-saa/data/feasibility_dict.pkl', 'rb') as f:
-        feasibility_dict = pickle.load(f)
+    data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
+    feasibility_path = os.path.abspath(os.path.join(data_dir, 'feasibility_dict.pkl'))
+    with open(feasibility_path, 'rb') as f: feasibility_dict = pickle.load(f)
     max_days = feasibility_dict.get((scenario_name, replication, divisions_per_day), 16)+1
     # max_days = 17
     model = pyo.ConcreteModel(scenario_name)
@@ -38,14 +39,16 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, replicatio
     set_K = range(num_I +num_J+1, num_I + num_J + num_K+1)
     num_V = 4
     u_open = 2
-    scenario_doe = [22000.0] * num_I # 22,000 m2 is max, 14000 is min
+    scenario_doe = [14000.0] * num_I # 22,000 m2 is max, 14000 is min
 
 
     # Build and return the Pyomo model.
     model = pyo.ConcreteModel()
     model.name = scenario_name
     
-    with open('/home/lennon/git/tl-saa/data/scenario_replication_percentile_delays_i6_j6.pkl', 'rb') as f:
+    data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
+    percentile_delays_path = os.path.abspath(os.path.join(data_dir, 'scenario_replication_percentile_delays_i6_j6.pkl'))
+    with open(percentile_delays_path, 'rb') as f:
         all_percentile_delays = pickle.load(f)
     percentile_delays = all_percentile_delays[(scenario_name, replication)]
     print(f"Percentile Delays: {percentile_delays}")
