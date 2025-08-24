@@ -28,13 +28,13 @@ def generate_ship_travel_times(divisions_per_day , percentile_delays, average_de
     # In-Transit Delays
     
     distance_table_nm = {
-            ( 7,  7): 0,      ( 7,  8): 408,    ( 7,  9): 1336, ( 7, 10): 1226, ( 7, 11): 1475, ( 7, 12): 1662, ( 7, 13): 5210.5, # Beaumont
-            ( 8,  7): 408,    ( 8,  8): 0,      ( 8,  9): 1120, ( 8, 10): 1014, ( 8, 11): 1261, ( 8, 12): 1449, ( 8, 13): 4904,   # Gulfport
-            ( 9,  7): 1336,   ( 9,  8): 1120,   ( 9,  9): 0,    ( 9, 10): 199,  ( 9, 11): 219,  ( 9, 12): 429,  ( 9, 13): 4904,   # Charleston
-            (10,  7): 1226,   (10,  8): 1014,   (10,  9): 199,  (10, 10): 0,    (10, 11): 376,  (10, 12): 592,  (10, 13): 4904,   # Jacksonville
-            (11,  7): 1475,   (11,  8): 1261,   (11,  9): 219,  (11, 10): 376,  (11, 11): 0,    (11, 12): 254,  (11, 13): 3678,   # Morehead City
-            (12,  7): 1662,   (12,  8): 1449,   (12,  9): 429,  (12, 10): 592,  (12, 11): 254,  (12, 12): 0,    (12, 13): 3678,   # Portsmouth
-            ( 0,  7): 0,      ( 0,  8): 0,      ( 0,  9): 0,    ( 0, 10): 0,    ( 0, 11): 0,    ( 0, 12): 0,    ( 0, 13): 0}      # Open
+            ( 6,  6): 0,      ( 6,  7): 408,    ( 6,  8): 1336, ( 6,  9): 1226, ( 6, 10): 1475, ( 6, 11): 1662, ( 6, 12): 5210.5, # Beaumont
+            ( 7,  6): 408,    ( 7,  7): 0,      ( 7,  8): 1120, ( 7,  9): 1014, ( 7, 10): 1261, ( 7, 11): 1449, ( 7, 12): 4904,   # Gulfport
+            ( 8,  6): 1336,   ( 8,  7): 1120,   ( 8,  8): 0,    ( 8,  9): 199,  ( 8, 10): 219,  ( 8, 11): 429,  ( 8, 12): 4904,   # Charleston
+            ( 9,  6): 1226,   ( 9,  7): 1014,   ( 9,  8): 199,  ( 9,  9): 0,    ( 9, 10): 376,  ( 9, 11): 592,  ( 9, 12): 4904,   # Jacksonville
+            (10,  6): 1475,   (10,  7): 1261,   (10,  8): 219,  (10,  9): 376,  (10, 10): 0,    (10, 11): 254,  (10, 12): 3678,   # Morehead City
+            (11,  6): 1662,   (11,  7): 1449,   (11,  8): 429,  (11,  9): 592,  (11, 10): 254,  (11, 11): 0,    (11, 12): 3678,   # Portsmouth
+            ( 0,  6): 0,      ( 0,  7): 0,      ( 0,  8): 0,    ( 0,  9): 0,    ( 0, 10): 0,    ( 0, 11): 0,    ( 0, 12): 0}      # Open
     
     NAUTICAL_MILE_TO_KM = 1.852
     distance_table_km = { pair: round(nm * NAUTICAL_MILE_TO_KM, 2) for pair, nm in distance_table_nm.items()}
@@ -56,7 +56,11 @@ def generate_ship_travel_times(divisions_per_day , percentile_delays, average_de
             perturbed_time_to_reach_destination[(A, B)] = 0
             continue
         scale = average_delay * time_hr
-        log_normal_adjustment = lognorm.ppf(percentile_delays[A], s=sigma, loc=0, scale=scale)
+        if B == 0 or B == 12:
+            percentile_delay = percentile_delays[A]
+        else:
+            percentile_delay = percentile_delays[A] * percentile_delays[B]
+        log_normal_adjustment = lognorm.ppf(percentile_delay, s=sigma, loc=0, scale=scale)
         perturbed_time_to_reach_destination[(A, B)] = time_hr + log_normal_adjustment
     
     
@@ -73,6 +77,3 @@ def generate_ship_travel_times(divisions_per_day , percentile_delays, average_de
             
 
     return ship_travel_times_with_ship
-
-
-print(generate_ship_travel_times(3 , {7:.98,8:.98,9:.98,10:.98,11:.98,12:.98}, average_delay=0.15, sigma=1.0, num_V=1))
