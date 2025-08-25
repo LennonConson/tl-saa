@@ -1,4 +1,4 @@
-mpiexec -np 2 python -u -m mpi4py final_6_spoe_lshapedhub.py --num-scens 3 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped --max-solver-threads=12 --verbose
+mpiexec -np 2 python -u -m mpi4py lshapedhub.py --num-scens 2 --bundles-per-rank=0 --max-iterations=50 --solver-name=gurobi_persistent --rel-gap=0.0 --xhatlshaped --max-solver-threads=12 --verbose
 # MPI Command Flags Explained
 # ## MPI and Python flags:
 

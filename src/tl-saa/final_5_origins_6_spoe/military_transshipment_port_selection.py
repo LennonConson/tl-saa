@@ -8,7 +8,7 @@ import pandas as pd
 import pickle
 import os
 
-def scenario_creator(scenario_name, divisions_per_day=3, replication=0):
+def scenario_creator(scenario_name, divisions_per_day, outload, replication=0, max_days=30, total_number_of_samples=1, fix_solution=None):
     print(f"Creating scenario: {scenario_name}")
     """ Create a scenario    
     Args:
@@ -16,21 +16,29 @@ def scenario_creator(scenario_name, divisions_per_day=3, replication=0):
             Name of the scenario to construct.
     """
     # Create the concrete model object
-    model = pysp_instance_creation_callback(scenario_name, divisions_per_day, replication)
-    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])    
+    model = pysp_instance_creation_callback(scenario_name, divisions_per_day, outload, replication, max_days, total_number_of_samples)
+    # If fix_solution is provided, fix the corresponding y_open variables
+    if fix_solution is not None:
+        for var_index_str, value in fix_solution.items():
+            # Parse variable name and index from strings like 'y_open[6]'
+            if var_index_str.startswith('y_open[') and var_index_str.endswith(']'):
+                # Extract the index from 'y_open[6]' format
+                index_str = var_index_str[7:-1]  # Remove 'y_open[' and ']'
+                try:
+                    index = int(index_str)
+                    if hasattr(model, 'y_open') and index in model.y_open:
+                        model.y_open[index].fix(value)
+                    else:
+                        print(f"y_open[{index}] not found in model")
+                except ValueError:
+                    print(f"Could not parse index from {var_index_str}")
+            else:
+                print(f"Unrecognized variable format: {var_index_str}")
+    sputils.attach_root_node(model, model.FirstStageCost, [model.y_open])
     return model
 
-def pysp_instance_creation_callback(scenario_name, divisions_per_day, replication):
-    # long function to create the entire model
-    # scenario_name is a string (e.g. 'scen0', 'scen1', 'scen2')
-    # /home/lennon/git/tl-saa/data/feasibility_dict.pkl
-    
-    # Key: (scenario_name, replication, divisions_per_day), Value: max_days
-    data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
-    feasibility_path = os.path.abspath(os.path.join(data_dir, 'feasibility_dict.pkl'))
-    with open(feasibility_path, 'rb') as f: feasibility_dict = pickle.load(f)
-    max_days = feasibility_dict.get((scenario_name, replication, divisions_per_day), 16)+1
-    # max_days = 17
+def pysp_instance_creation_callback(scenario_name, divisions_per_day, outload, replication, max_days, total_number_of_samples):
+
     model = pyo.ConcreteModel(scenario_name)
     num_I = 5
     num_J = 6
@@ -39,21 +47,23 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, replicatio
     set_K = range(num_I +num_J+1, num_I + num_J + num_K+1)
     num_V = 3
     u_open = 2
-    scenario_doe = [21000.0] * num_I # 21,000 m2 is max, 14000 m2  is min
 
 
     # Build and return the Pyomo model.
     model = pyo.ConcreteModel()
     model.name = scenario_name
-    
-    data_dir = os.path.join(os.path.dirname(__file__), '../../../data')
-    percentile_delays_path = os.path.abspath(os.path.join(data_dir, 'scenario_replication_percentile_delays_i5_j6.pkl'))
-    with open(percentile_delays_path, 'rb') as f:
-        all_percentile_delays = pickle.load(f)
-    percentile_delays = all_percentile_delays[(scenario_name, replication)]
+
+    # Load delay scenarios from the pickle file
+    delaydict_path = "/home/user/git/tl-saa/data/delaydict_i5_j6_samples100.pkl"
+    with open(delaydict_path, "rb") as f:
+        delay_scenarios_all = pickle.load(f)
+
+    # Extract percentile_delays for this scenario_name
+    percentile_delays = delay_scenarios_all[(replication,total_number_of_samples)][scenario_name]
+    print(f"Percentile Delays: {percentile_delays}")
+
     average_delay=0.15
     sigma=1.0
-
     travel_time_by_rail = generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay, sigma)
     ship_travel_times = generate_ship_travel_times(divisions_per_day, percentile_delays, average_delay, sigma, num_V)
 
@@ -66,8 +76,14 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, replicatio
     
     num_T = divisions_per_day * max_days
 
-    outload_requirements = {i + 1: val for i, val in enumerate(scenario_doe)}
-  
+    # Load outload requirements from outload_i5_sample100.pkl using scenario_name as key
+    print(scenario_name)
+    
+    l_outload = 14000
+    u_outload = 21000
+    # print(f"Outload: {outload}")
+    outload_requirements = {i+1: int(l_outload + outload[i] * (u_outload - l_outload)) for i in range(num_I)}
+
     ship_layberth = {1:1, 2:2, 3:6  # Bob Hope
                      }
     updated_ship_layberth = {k: v + num_I for k, v in ship_layberth.items()}
@@ -125,21 +141,26 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, replicatio
     # # Parameters
     # # ---------
     # # Outload Requirements
-    model.a_i  = pyo.Param(model.I,           initialize=outload_requirements, within=pyo.NonNegativeReals)
-    print(f"Outload Requirements: {model.a_i.extract_values()}")
+    model.a_i  = pyo.Param(model.I,           initialize=outload_requirements , within=pyo.NonNegativeReals)
+    # print(f"Outload Requirements: {model.a_i.extract_values()}")
     # # Outload Requirements
     model.b_jv  = pyo.Param(model.J, model.V,           initialize=ship_berth_binary,  within=pyo.NonNegativeReals)
+    # print(f"Ship Layberth Assignments: {model.b_jv.extract_values()}")
     # Travel Times
     model.c_nnv  = pyo.Param(model.N_0, model.N, model.V_0,           initialize=travel_times, within=pyo.NonNegativeReals)
+    # print(f"Travel Times: {model.c_nnv.extract_values()}")
+    # print(f"Travel Times: values {list(model.c_nnv.items())}")
     # tau days number of time windows per day
     # model.tau   = pyo.Param(                    initialize=divisions_per_day, within=pyo.NonNegativeReals)
     # maximum number of spoes
     model.u_open   = pyo.Param(                    initialize=u_open, within=pyo.NonNegativeReals)
+    # print(f"Maximum SPOEs Open: {model.u_open.value}")
     # Stowable Cargo Capacity
     model.u_ship   = pyo.Param(model.V,                    initialize=scaled_stowable_cargo_capacity, within=pyo.NonNegativeReals)
-    print(f"Updated Stowable Cargo Capacity: {model.u_ship.extract_values()}")
+    # print(f"Stowable Cargo Capacity: {model.u_ship.extract_values()}")
     # Daily Processing Rate
     model.u_spoe   = pyo.Param(model.J,                    initialize=updated_daily_processing_rate, within=pyo.NonNegativeReals)
+    # print(f"Daily Processing Rates: {model.u_spoe.extract_values()}")
     model.FirstStageCost = 0
 
     max_travel = max(
