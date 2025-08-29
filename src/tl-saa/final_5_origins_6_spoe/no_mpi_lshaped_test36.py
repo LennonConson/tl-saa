@@ -1,4 +1,4 @@
-import military_transshipment_port_selection as mtps
+import military_transshipment_port_selection_test36 as mtps
 import pickle
 import pyomo.environ as pyo
 import time
@@ -136,12 +136,13 @@ def write_lshaped_results_to_csv(csv_file, outload_key, num_samples, replication
         writer.writerow(row)
 
 if __name__ == "__main__":
-    num_samples_set = [2, 3, 4, 5, 6, 7, 8, 9, 10]  #
+    num_samples_set = [2, 3, 4, 5, 6, 7, 8, 9, 10, 20]  #
     num_outloads = 100
-    csv_file = "/home/user/git/tl-saa/data/lshaped_results.csv"
+    csv_file = "/home/user/git/tl-saa/data/lshaped_results_test36.csv"
     max_minutes = 60
 
-    for outload_key in [range(num_outloads)]:
+    # for outload_key in [range(num_outloads)]:
+    for outload_key in [36]:
         print(f"\n=== Starting runs for outload_key={outload_key} ===")
         for num_samples in num_samples_set:
             print(f"\n=== Starting runs for num_samples={num_samples} ===")

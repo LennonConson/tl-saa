@@ -9,8 +9,8 @@ num_J = 6
 set_J = range(num_I + 1, num_I + num_J + 1)
 
 
-number_of_samples = [1,2,4,6,10,20,30,40,50,100] # all number of scenarios
-num_replications = 100
+number_of_samples = [300] # all number of scenarios
+num_replications = 4
 
 delay_dict = {}
 
@@ -25,7 +25,7 @@ for replication in range(num_replications):
 
 with open(f"/home/user/git/tl-saa/data/delaydict_i{num_I}_j{num_J}_samples{num_replications}.txt", "w") as txtfile:
     pprint.pprint(delay_dict, stream=txtfile)
-filename = f"/home/user/git/tl-saa/data/delaydict_i{num_I}_j{num_J}_samples{num_replications}.pkl"
+filename = f"/home/user/git/tl-saa/data/delaydict_i{num_I}_j{num_J}_samples{num_replications}_outload36_300.pkl"
 with open(filename, "wb") as f:
     pickle.dump(delay_dict, f)
 # (replication, number_of_samples): (scenario_name, delays)

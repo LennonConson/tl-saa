@@ -1,4 +1,4 @@
-import military_transshipment_port_selection as mtps
+import military_transshipment_port_selection_test36 as mtps
 import pickle
 import pyomo.environ as pyo
 import time
@@ -37,7 +37,7 @@ def solve_lshaped(outload_key, num_samples, replication, fix_solution=None):
         "divisions_per_day": 3,
         "outload": outload,
         "replication": replication,
-        "max_days": 25,
+        "max_days": 35,
         "total_number_of_samples": num_samples,
         "fix_solution": fix_solution
     }
@@ -136,59 +136,20 @@ def write_lshaped_results_to_csv(csv_file, outload_key, num_samples, replication
         writer.writerow(row)
 
 if __name__ == "__main__":
-    num_samples_set = [2, 3, 4, 5, 6, 7, 8, 9, 10]  #
-    num_outloads = 100
-    csv_file = "/home/user/git/tl-saa/data/lshaped_results.csv"
-    max_minutes = 60
+    csv_file = "/home/user/git/tl-saa/data/lshaped_results_test36.csv"
 
-    for outload_key in [range(num_outloads)]:
-        print(f"\n=== Starting runs for outload_key={outload_key} ===")
-        for num_samples in num_samples_set:
-            print(f"\n=== Starting runs for num_samples={num_samples} ===")
-            start_time = time.time()
-            max_seconds = max_minutes * 60
-
-            solution_set = set()
-            replication = 0
-            while True:
-                current_time = time.time()
-                elapsed = current_time - start_time
-                print(f"Running replication {replication} (elapsed: {elapsed/60:.2f} min)")
-                wall_clock_time, y_open_dict, obj, term, is_fixed = solve_lshaped(outload_key, num_samples, replication)
-
-                current_time = time.time()
-                elapsed = current_time - start_time
-                write_lshaped_results_to_csv(
-                    csv_file, outload_key, num_samples, replication, wall_clock_time, y_open_dict, obj, term, is_fixed, elapsed_time=elapsed
-                )
-
-                if replication > 0 and tuple(sorted(y_open_dict.items())) not in solution_set:
-                    for prev_rep in range(replication):
-                        wall_clock_time_fixed, y_open_dict_fixed, obj_fixed, term_fixed, is_fixed_fixed = solve_lshaped(
-                            outload_key, num_samples, prev_rep, fix_solution=y_open_dict
-                        )
-                        current_time = time.time()
-                        elapsed = current_time - start_time
-                        write_lshaped_results_to_csv(
-                            csv_file, outload_key, num_samples, prev_rep, wall_clock_time_fixed, y_open_dict_fixed, obj_fixed, term_fixed, is_fixed_fixed, elapsed_time=elapsed
-                        )
-
-                solution_set.add(tuple(sorted(y_open_dict.items())))
-                # For each solution in solution_set except the current one, run solve_lshaped with fix_solution
-                for prev_solution in solution_set:
-                    if prev_solution == tuple(sorted(y_open_dict.items())):
-                        continue
-                    fix_solution = dict(prev_solution)
-                    wall_clock_time_fixed, y_open_dict_fixed, obj_fixed, term_fixed, is_fixed_fixed = solve_lshaped(
-                        outload_key, num_samples, replication, fix_solution=fix_solution
-                    )
-                    current_time = time.time()
-                    elapsed = current_time - start_time
-                    write_lshaped_results_to_csv(
-                        csv_file, outload_key, num_samples, replication, wall_clock_time_fixed, y_open_dict_fixed, obj_fixed, term_fixed, is_fixed_fixed, elapsed_time=elapsed
-                    )
-
-                if elapsed >= max_seconds:
-                    print(f"Reached {max_minutes} minutes for num_samples={num_samples}. Stopping loop.")
-                    break
-                replication += 1
+    # One-off fixed run: specify outload_key, num_samples, replication, and fix_solution as needed
+    outload_key = 36
+    num_samples = 5  # If num_samples_set is a single int, otherwise set to desired value
+    replication = 1
+    fix_solution = {'y_open[6]': 1.0, 'y_open[7]': 0.0, 'y_open[8]': 1.0, 'y_open[9]': 0.0, 'y_open[10]': 0.0, 'y_open[11]': 0.0}
+    # 1.0,0.0,1.0,0.0,0.0,0.0
+    # fix_solution = None
+    start_time = time.time()
+    wall_clock_time, y_open_dict, obj, term, is_fixed = solve_lshaped(
+        outload_key, num_samples, replication, fix_solution=fix_solution
+    )
+    elapsed = time.time() - start_time
+    write_lshaped_results_to_csv(
+        csv_file, outload_key, num_samples, replication, wall_clock_time, y_open_dict, obj, term, is_fixed, elapsed_time=elapsed
+    )

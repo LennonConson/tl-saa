@@ -1,17 +1,13 @@
 
 import military_transshipment_port_selection as mtps
+import pickle
 
 from mpisppy.spin_the_wheel import WheelSpinner
 from mpisppy.utils import config
 import mpisppy.utils.cfg_vanilla as vanilla
 from mpisppy.cylinders.hub import LShapedHub
 from mpisppy.opt.lshaped import LShapedMethod
-import numpy as np
-np.random.seed(42)
-import sobel
 
-def generate_percentile_delays(set_J):
-    return {entry: np.random.rand() for entry in set_J}
 
 def _parse_args():
     cfg = config.Config()
@@ -19,6 +15,7 @@ def _parse_args():
     cfg.popular_args()
     cfg.two_sided_args()
     cfg.xhatlshaped_args()
+    cfg.fwph_args()
     cfg.parse_command_line("ts_cylinders")
     return cfg
 
@@ -26,30 +23,25 @@ def _parse_args():
 def main():
     cfg = _parse_args()
     num_scen = cfg.num_scens
+    replications = 0
+    replication = 0
+    num_samples = num_scen
+    outload_key = 0
+    with open("/home/user/git/tl-saa/data/outload_5_samples100.pkl", "rb") as f:
+        all_outload = pickle.load(f)
+    outload= all_outload[outload_key]
+    all_scenario_names = [f"delay_scen{i}" for i in range(num_samples)]
+
     scenario_creator = mtps.scenario_creator
     scenario_denouement = mtps.scenario_denouement
-
-    all_outload = sobel.generate_centered_sobol_samples(dim=5, n_samples=128, seed=42)
-    num_I = 5
-    num_J = 6
-    set_J = range(num_I + 1, num_I + num_J + 1)
-    # Scenarioes generatation
-    exploring = 0
-    outload = all_outload[exploring]
-    replications = 1
-    all_scenario_names = [f"delay_scenario_{i}" for i in range(num_scen)]
-    scenario_delays = {
-        scen: [generate_percentile_delays(set_J)[j] for j in set_J]
-        for scen in all_scenario_names
-        }
-
-
+    all_scenario_names = [f"delay_scen{sn}" for sn in range(num_scen)]
     scenario_creator_kwargs = {
         "divisions_per_day": 3,
-        "delay_scenarios": scenario_delays,
         "outload": outload,
+        "replication": replication,
         "max_days": 20
     }
+    
     # Things needed for vanilla cylinders
     beans = (cfg, scenario_creator, scenario_denouement, all_scenario_names)
 
@@ -61,8 +53,8 @@ def main():
         "sp_solver_options": spo,
         #"valid_eta_lb": {i: -432000 for i in all_scenario_names},
         "max_iter": cfg.max_iterations,
-        "verbose": True,
-        "root_scenarios":[all_scenario_names[0]]
+        "verbose": False,
+        "root_scenarios":[all_scenario_names[len(all_scenario_names)//2]]
    }
     
     # L-shaped hub
@@ -83,14 +75,17 @@ def main():
         },
     }
 
-    xhatlshaped_spoke = vanilla.xhatlshaped_spoke(*beans, scenario_creator_kwargs=scenario_creator_kwargs)
+        # FWPH spoke
+    
+    # fw_spoke = vanilla.fwph_spoke(*beans, scenario_creator_kwargs=scenario_creator_kwargs)
+    
+    # xhatlshaped_spoke = vanilla.xhatlshaped_spoke(*beans, scenario_creator_kwargs=scenario_creator_kwargs)
 
 
     list_of_spoke_dict = list()
-    list_of_spoke_dict.append(xhatlshaped_spoke)
+    # list_of_spoke_dict.append(fw_spoke)
+    # list_of_spoke_dict.append(xhatlshaped_spoke)
     WheelSpinner(hub_dict, list_of_spoke_dict).spin()
-
-
 
 
 if __name__ == "__main__":

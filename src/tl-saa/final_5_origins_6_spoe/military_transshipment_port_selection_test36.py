@@ -54,7 +54,7 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, outload, r
     model.name = scenario_name
 
     # Load delay scenarios from the pickle file
-    delaydict_path = "/home/user/git/tl-saa/data/delaydict_i5_j6_samples100.pkl"
+    delaydict_path = "/home/user/git/tl-saa/data/delaydict_i5_j6_samples1_outload36_300.pkl"
     with open(delaydict_path, "rb") as f:
         delay_scenarios_all = pickle.load(f)
 
