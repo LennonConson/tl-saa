@@ -179,7 +179,8 @@ cython_debug/
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #  and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #  you could uncomment the following to ignore the enitre vscode folder
-# .vscode/
+.vscode/
+.conda/
 
 # Ruff stuff:
 .ruff_cache/
@@ -194,3 +195,4 @@ cython_debug/
 .cursorignore
 .cursorindexingignoredata/delaydict_output.txt
 data/delaydict_i5_j6_samples20.txt
+
