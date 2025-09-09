@@ -1,0 +1,2 @@
+outload_key,num_samples,replication,wall_clock_time,elapsed_time,obj,term,is_fixed,y_open[6],y_open[7],y_open[8],y_open[9],y_open[10],y_open[11]
+29,2,0,24.0117130279541,27.16379737854004,0.0,infeasible,False,0.0,0.0,0.0,0.0,0.0,0.0

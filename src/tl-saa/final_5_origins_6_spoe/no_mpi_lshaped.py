@@ -137,11 +137,11 @@ def write_lshaped_results_to_csv(csv_file, outload_key, num_samples, replication
 
 if __name__ == "__main__":
     num_samples_set = [2, 3, 4, 5, 6, 7, 8, 9, 10]  #
-    num_outloads = 100
+    num_outloads = 29
     csv_file = "/home/user/git/tl-saa/data/lshaped_results.csv"
-    max_minutes = 60
+    max_minutes = 20
 
-    for outload_key in [range(num_outloads)]:
+    for outload_key in [29]:
         print(f"\n=== Starting runs for outload_key={outload_key} ===")
         for num_samples in num_samples_set:
             print(f"\n=== Starting runs for num_samples={num_samples} ===")

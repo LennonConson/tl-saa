@@ -1,8 +1,6 @@
 
 import pyomo.environ as pyo
 import mpisppy.utils.sputils as sputils
-from scenario_creator_rail_reduced import generate_rail_travel_times
-from scenario_creator_ship_reduced import generate_ship_travel_times
 import numpy as np
 import pandas as pd
 import pickle
@@ -54,18 +52,22 @@ def pysp_instance_creation_callback(scenario_name, divisions_per_day, outload, r
     model.name = scenario_name
 
     # Load delay scenarios from the pickle file
-    delaydict_path = "/home/user/git/tl-saa/data/delaydict_i5_j6_samples100.pkl"
+    delaydict_path = "/home/user/git/tl-saa/data/delaydict_i5_j6_samples6_outload29.pkl"
     with open(delaydict_path, "rb") as f:
         delay_scenarios_all = pickle.load(f)
 
+    with open("/home/user/git/tl-saa/data/outload_5_samples100.pkl", "rb") as f:
+        all_outload = pickle.load(f)
+
+    outload_key = next(i for i, arr in enumerate(all_outload) if np.array_equal(arr, outload))
+    
+
     # Extract percentile_delays for this scenario_name
-    percentile_delays = delay_scenarios_all[(replication,total_number_of_samples)][scenario_name]
+    percentile_delays = delay_scenarios_all[(outload_key, replication, total_number_of_samples)][(scenario_name, "delays")]
     print(f"Percentile Delays: {percentile_delays}")
 
-    average_delay=0.15
-    sigma=0.5
-    travel_time_by_rail = generate_rail_travel_times(divisions_per_day, percentile_delays, average_delay, sigma)
-    ship_travel_times = generate_ship_travel_times(divisions_per_day, percentile_delays, average_delay, sigma, num_V)
+    travel_time_by_rail = delay_scenarios_all[(outload_key, replication, total_number_of_samples)][(scenario_name, "rail_travel_times")]
+    ship_travel_times   = delay_scenarios_all[(outload_key, replication, total_number_of_samples)][(scenario_name, "ship_travel_times")]
 
     travel_times = {
             **travel_time_by_rail, 

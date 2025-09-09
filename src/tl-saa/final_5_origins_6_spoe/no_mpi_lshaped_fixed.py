@@ -1,4 +1,4 @@
-import military_transshipment_port_selection_test36 as mtps
+import military_transshipment_port_selection as mtps
 import pickle
 import pyomo.environ as pyo
 import time

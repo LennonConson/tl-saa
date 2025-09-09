@@ -46,10 +46,6 @@ def generate_ship_travel_times(divisions_per_day , percentile_delays, average_de
     for (A, B), distance_km in distance_table_km.items():
         time_to_reach_destination[(A, B)] = distance_km / vehicle_speeds
     
-    # Assumptions
-    average_delay = 0.15                   # Mean travel experiences a 25  % delay
-    sigma = 1.0                     # Standard deviation for log-normal distribution
-
     perturbed_time_to_reach_destination = {}
     for (A, B), time_hr in time_to_reach_destination.items():
         if time_hr == 0:
